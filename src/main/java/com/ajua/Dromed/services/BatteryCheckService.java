@@ -1,10 +1,14 @@
 package com.ajua.Dromed.services;
 
+import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.repository.DroneRepository;
+import com.ajua.Dromed.services.patterns.BatteryObserver;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class BatteryCheckService implements Runnable {

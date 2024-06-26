@@ -6,6 +6,7 @@ import com.ajua.Dromed.exceptions.ResourceNotFoundException;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.repository.DroneRepository;
 
+import com.ajua.Dromed.services.patterns.DroneFactory;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
