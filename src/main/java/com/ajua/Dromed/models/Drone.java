@@ -32,6 +32,6 @@ public class Drone {
     @Column(nullable = false)
     private State state;
 
-    public void addMedication(Medication medication) {
-    }
+//    public void addMedication(Medication medication) {
+//    }
 }
