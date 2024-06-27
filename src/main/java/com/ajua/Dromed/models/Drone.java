@@ -31,4 +31,7 @@ public class Drone {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private State state;
+
+    public void addMedication(Medication medication) {
+    }
 }

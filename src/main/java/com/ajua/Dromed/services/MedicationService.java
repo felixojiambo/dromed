@@ -5,12 +5,18 @@ import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.repository.MedicationRepository;
 import com.ajua.Dromed.repository.DroneMedicationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
+@EnableRetry
 @Service
 public class MedicationService {
+
     @Autowired
     private MedicationRepository medicationRepository;
 
@@ -21,6 +27,7 @@ public class MedicationService {
         return medicationRepository.save(medication);
     }
 
+    @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
     public List<Medication> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
                 .stream()
