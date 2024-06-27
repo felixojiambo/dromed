@@ -23,10 +23,22 @@ public class MedicationService {
     @Autowired
     private DroneMedicationRepository droneMedicationRepository;
 
+    /**
+     * Saves a new medication to the repository.
+     *
+     * @param medication The medication to save.
+     * @return The saved Medication object.
+     */
     public Medication loadMedication(Medication medication) {
         return medicationRepository.save(medication);
     }
 
+    /**
+     * Retrieves all medications associated with a specific drone, with retry logic to handle transient failures.
+     *
+     * @param droneId The unique identifier of the drone.
+     * @return A list of Medication objects associated with the drone.
+     */
     @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
     public List<Medication> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)

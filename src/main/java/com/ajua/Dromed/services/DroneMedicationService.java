@@ -18,6 +18,14 @@ public class DroneMedicationService {
     @Autowired
     private DroneRepository droneRepository;
 
+    /**
+     * Loads a drone with a specified medication, ensuring the drone's battery level is above 25%
+     * and the total weight of medications does not exceed the drone's weight limit.
+     *
+     * @param droneId The unique identifier of the drone to load.
+     * @param medication The medication to load onto the drone.
+     * @return A DroneMedication object representing the association between the drone and medication.
+     */
     public DroneMedication loadDroneWithMedication(Long droneId, Medication medication) {
         Drone drone = droneRepository.findById(droneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
