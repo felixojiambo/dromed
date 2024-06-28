@@ -1,5 +1,7 @@
 package com.ajua.Dromed.services.impl;
-
+import com.ajua.Dromed.dtos.DroneDTO;
+import com.ajua.Dromed.dtos.DroneMedicationDTO;
+import com.ajua.Dromed.dtos.MedicationDTO;
 import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.models.Drone;
@@ -9,7 +11,11 @@ import com.ajua.Dromed.repository.DroneMedicationRepository;
 import com.ajua.Dromed.repository.DroneRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -20,17 +26,18 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 public class DroneServiceImplTest {
 
+    @InjectMocks
     private DroneServiceImpl droneService;
+
+    @Mock
     private DroneRepository droneRepository;
+
+    @Mock
     private DroneMedicationRepository droneMedicationRepository;
 
     @BeforeEach
     void setUp() {
-        droneRepository = mock(DroneRepository.class);
-        droneMedicationRepository = mock(DroneMedicationRepository.class);
-        droneService = new DroneServiceImpl();
-        droneService.droneRepository = droneRepository;
-        droneService.droneMedicationRepository = droneMedicationRepository;
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
@@ -44,7 +51,7 @@ public class DroneServiceImplTest {
 
         when(droneRepository.save(any(Drone.class))).thenReturn(drone);
 
-        Drone registeredDrone = droneService.registerDrone("SN123", Model.LIGHTWEIGHT, 200, 100, State.IDLE);
+        DroneDTO registeredDrone = droneService.registerDrone("SN123", Model.LIGHTWEIGHT, 200, 100, State.IDLE);
 
         assertNotNull(registeredDrone);
         assertEquals("SN123", registeredDrone.getSerialNumber());
@@ -59,7 +66,13 @@ public class DroneServiceImplTest {
         drone.setBatteryCapacity(100);
         drone.setState(State.IDLE);
 
+        MedicationDTO medicationDTO = new MedicationDTO();
+        medicationDTO.setId(1L);
+        medicationDTO.setName("Med1");
+        medicationDTO.setWeight(100);
+
         Medication medication = new Medication();
+        medication.setId(1L);
         medication.setName("Med1");
         medication.setWeight(100);
 
@@ -68,11 +81,11 @@ public class DroneServiceImplTest {
         when(droneRepository.save(any(Drone.class))).thenReturn(drone);
         when(droneMedicationRepository.save(any(DroneMedication.class))).thenReturn(new DroneMedication(drone, medication));
 
-        DroneMedication droneMedication = droneService.loadDroneWithMedication(medication);
+        DroneMedicationDTO droneMedicationDTO = droneService.loadDroneWithMedication(medicationDTO);
 
-        assertNotNull(droneMedication);
-        assertEquals(medication, droneMedication.getMedication());
-        assertEquals(State.LOADED, drone.getState());
+        assertNotNull(droneMedicationDTO);
+        assertEquals(medicationDTO.getName(), droneMedicationDTO.getMedication().getName());
+        assertEquals(State.LOADED, droneMedicationDTO.getDrone().getState());
     }
 
     @Test
@@ -85,7 +98,7 @@ public class DroneServiceImplTest {
 
         when(droneRepository.findByState(State.IDLE)).thenReturn(List.of(drone1, drone2));
 
-        List<Drone> availableDrones = droneService.getAvailableDrones();
+        List<DroneDTO> availableDrones = droneService.getAvailableDrones();
 
         assertEquals(2, availableDrones.size());
     }
@@ -119,7 +132,7 @@ public class DroneServiceImplTest {
 
         when(droneMedicationRepository.findByDroneId(1L)).thenReturn(List.of(droneMedication1, droneMedication2));
 
-        List<Medication> medications = droneService.getMedicationsByDrone(1L);
+        List<MedicationDTO> medications = droneService.getMedicationsByDrone(1L);
 
         // Debug statements
         System.out.println("Expected Medication 1: " + medication1);
@@ -127,8 +140,8 @@ public class DroneServiceImplTest {
         System.out.println("Medications returned: " + medications);
 
         assertEquals(2, medications.size());
-        assertTrue(medications.contains(medication1), "Medications list should contain medication1");
-        assertTrue(medications.contains(medication2), "Medications list should contain medication2");
+        assertTrue(medications.stream().anyMatch(med -> med.getName().equals("Med1")));
+        assertTrue(medications.stream().anyMatch(med -> med.getName().equals("Med2")));
     }
 
     @Test
@@ -171,5 +184,24 @@ public class DroneServiceImplTest {
 
         assertEquals(State.IDLE, drone.getState());
         verify(droneRepository, times(2)).save(drone); // Called twice: once for RETURNING and once for IDLE
+    }
+    @Test
+    void testMarkIdle() {
+
+        Drone drone = new Drone();
+        drone.setId(1L);
+        drone.setState(State.RETURNING);
+
+
+        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
+
+        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
+
+
+        droneService.markIdle(1L);
+
+        assertEquals(State.IDLE, drone.getState());
+
+        verify(droneRepository, times(1)).save(drone);
     }
 }

@@ -55,7 +55,7 @@ public class SwaggerConfig {
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
                 .group("com.ajua")
-                .pathsToMatch("/api/drones/**")
+                .pathsToMatch("/api/v1/drones/**")
                 .build();
     }
 
