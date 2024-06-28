@@ -133,8 +133,20 @@ public class DroneServiceImpl implements DroneService {
         }
 
         Drone drone = availableDrones.getFirst(); // Get the first available drone
+/*
+Instead of directly querying the battery level via BatteryLevelReader,
+I utilize the batteryCapacity attribute from the Drone entity. This approach
+relies on periodic updates performed by BatteryCheckServiceImpl to ensure
+the accuracy of the battery level information. This method reduces the overhead
+of frequent battery level checks and centralizes the battery status management
+within the BatteryCheckServiceImpl, promoting efficiency and consistency across
+the application.
+*/
 
-        if (drone.getBatteryCapacity() < MIN_BATTERY_LEVEL) {
+        // Check battery level from drone's batteryCapacity field
+        int batteryPercentage = drone.getBatteryCapacity();
+
+        if (batteryPercentage < MIN_BATTERY_LEVEL) {
             throw new IllegalStateException("Battery level is below 25%");
         }
 
