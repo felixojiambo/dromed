@@ -60,11 +60,12 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-//To be implemented 2. **Run integration tests:**
-   
-    ```sh
-    mvn verify
-    ```
+# To be implemented be later
+# Run integration tests using Maven's verify phase.
+# This command compiles the project's source code, runs any tests, 
+# and then packages the compiled code into a JAR file (if it hasn't been packaged already).
+mvn verify
+
 
 ## REST API Endpoints
 
