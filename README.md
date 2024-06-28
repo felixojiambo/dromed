@@ -1,3 +1,4 @@
+
 # Dromed
 
 This is a Spring Boot application that manages drones for delivering medications. It includes features such as registering drones, loading medications onto drones, checking available drones, and monitoring battery levels.
@@ -14,6 +15,8 @@ This is a Spring Boot application that manages drones for delivering medications
   - [Load Medication](#load-medication)
   - [Get Medications by Drone](#get-medications-by-drone)
   - [Load Drone with Medication](#load-drone-with-medication)
+  - [Battery Monitoring](#battery-monitoring)
+- [Notes](#notes)
 
 ## Requirements
 
@@ -54,10 +57,14 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-2. **Run integration tests:**
-    ```sh
-    mvn verify
-    ```
+# Integration tests to be implemented later
+Run integration tests using Maven's verify phase.
+This command compiles the project's source code, runs any tests, and then packages the compiled code into a JAR file (if it hasn't been packaged already).
+  ```sh
+mvn verify
+ ```
+
+
 
 ## REST API Endpoints
 
@@ -206,6 +213,11 @@ The application will be accessible at `http://localhost:8080`.
         }
     }
     ```
+
+### Battery Monitoring
+
+- **Battery Check Service:** The application includes a battery monitoring service that periodically checks the battery levels of all drones.
+- **Logging:** Battery levels are logged to help monitor battery usage and identify when drones need recharging.
 
 ## Notes
 
