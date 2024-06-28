@@ -1,6 +1,8 @@
 package com.ajua.Dromed.services.impl;
 
 import com.ajua.Dromed.models.Drone;
+import com.ajua.Dromed.models.DroneBatteryHistory;
+import com.ajua.Dromed.repository.DroneBatteryHistoryRepository;
 import com.ajua.Dromed.repository.DroneRepository;
 import com.ajua.Dromed.services.interfaces.BatteryCheckService;
 import com.ajua.Dromed.services.interfaces.BatteryLevelReader;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +27,9 @@ public class BatteryCheckServiceImpl implements BatteryCheckService {
 
     @Autowired
     private BatteryLevelReader batteryLevelReader;
+
+    @Autowired
+    private DroneBatteryHistoryRepository droneBatteryHistoryRepository;
 
     private final List<BatteryObserver> observers = new ArrayList<>();
 
@@ -39,6 +45,14 @@ public class BatteryCheckServiceImpl implements BatteryCheckService {
         drones.forEach(drone -> {
             try {
                 int newBatteryLevel = batteryLevelReader.readBatteryLevel(drone);
+
+                // Create a new battery history entry
+                DroneBatteryHistory history = new DroneBatteryHistory();
+                history.setDrone(drone);
+                history.setBatteryLevel(newBatteryLevel);
+                history.setTimestamp(LocalDateTime.now());
+                droneBatteryHistoryRepository.save(history);
+
                 drone.setBatteryCapacity(newBatteryLevel);
                 droneRepository.save(drone);
                 observers.forEach(observer -> observer.update(drone));

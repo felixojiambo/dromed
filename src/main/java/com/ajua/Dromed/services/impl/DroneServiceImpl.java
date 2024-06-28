@@ -21,29 +21,29 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service implementation for managing drones.
- */
 @Service
 public class DroneServiceImpl implements DroneService {
 
-    private static final int MAX_WEIGHT_LIMIT = 500;
+    private static final int MAX_WEIGHT_LIMIT = 500; // Max weight limit for drones
+    private static final int MIN_BATTERY_LEVEL = 25; // Min battery level for loading
 
     @Autowired
-    private DroneRepository droneRepository;
+    DroneRepository droneRepository;
 
     @Autowired
-    private DroneMedicationRepository droneMedicationRepository;
+    DroneMedicationRepository droneMedicationRepository;
 
     /**
      * Registers a new drone with the specified parameters.
+     * Validates weight limit against a maximum threshold.
      *
-     * @param serialNumber the serial number of the drone
-     * @param model the model of the drone
-     * @param weightLimit the weight limit of the drone
-     * @param batteryCapacity the battery capacity of the drone
-     * @param state the state of the drone
-     * @return the registered drone
+     * @param serialNumber   Serial number of the drone.
+     * @param model          Model of the drone.
+     * @param weightLimit    Weight limit of the drone.
+     * @param batteryCapacity Battery capacity of the drone.
+     * @param state          Initial state of the drone.
+     * @return The newly registered Drone object.
+     * @throws IllegalArgumentException if weight limit exceeds the maximum allowed.
      */
     @Override
     @Transactional
@@ -57,9 +57,13 @@ public class DroneServiceImpl implements DroneService {
 
     /**
      * Loads a drone with a specified medication.
+     * Ensures drone availability, battery level, weight limit, and state before loading.
      *
-     * @param medication the medication to load
-     * @return the DroneMedication record
+     * @param medication The medication to load onto the drone.
+     * @return The DroneMedication object representing the loaded medication.
+     * @throws DroneNotAvailableException if no drone is available for loading.
+     * @throws IllegalStateException     if battery level is below 25%, weight limit is exceeded,
+     *                                   or drone is not in a suitable state for loading.
      */
     @Override
     @Transactional
@@ -70,9 +74,9 @@ public class DroneServiceImpl implements DroneService {
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.getFirst(); // Get the first available drone
+        Drone drone = availableDrones.get(0); // Get the first available drone
 
-        if (drone.getBatteryCapacity() < 25) {
+        if (drone.getBatteryCapacity() < MIN_BATTERY_LEVEL) {
             throw new IllegalStateException("Battery level is below 25%");
         }
 
@@ -103,10 +107,11 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Retrieves the list of medications loaded on a specified drone.
+     * Retrieves medications loaded onto a specific drone.
+     * Uses retry mechanism with 3 attempts on failure, with a delay of 2 seconds between retries.
      *
-     * @param droneId the ID of the drone
-     * @return the list of medications
+     * @param droneId The ID of the drone to fetch medications for.
+     * @return List of medications loaded onto the drone.
      */
     @Override
     @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
@@ -118,21 +123,21 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Retrieves the list of available drones (in IDLE state).
+     * Retrieves a list of available drones that are currently idle.
      *
-     * @return the list of available drones
+     * @return List of available drones.
      */
     @Override
-    @Transactional
     public List<Drone> getAvailableDrones() {
         return droneRepository.findByState(State.IDLE);
     }
 
     /**
-     * Checks the battery level of a specified drone.
+     * Checks the battery level of a specific drone.
      *
-     * @param droneId the ID of the drone
-     * @return the battery level
+     * @param droneId The ID of the drone to check battery level for.
+     * @return Battery level percentage.
+     * @throws ResourceNotFoundException if the drone with the given ID is not found.
      */
     @Override
     public int checkDroneBatteryLevel(Long droneId) {
@@ -142,10 +147,10 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Calculates the total weight of the medications loaded on a specified drone.
+     * Calculates the total weight of medications loaded onto a specific drone.
      *
-     * @param droneId the ID of the drone
-     * @return the total loaded weight
+     * @param droneId The ID of the drone to calculate loaded weight for.
+     * @return Total weight of medications loaded on the drone.
      */
     @Override
     public int getTotalLoadedWeight(Long droneId) {
@@ -156,9 +161,11 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Starts the delivery process for a specified drone.
+     * Initiates delivery for a specific drone.
+     * Changes the drone state to DELIVERING if it's loaded.
      *
-     * @param droneId the ID of the drone
+     * @param droneId The ID of the drone to start delivery for.
+     * @throws IllegalStateException if the drone is not in a loaded state.
      */
     @Override
     public void startDelivery(Long droneId) {
@@ -174,9 +181,11 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Completes the delivery process for a specified drone.
+     * Completes delivery for a specific drone.
+     * Changes the drone state to DELIVERED if it's currently delivering.
      *
-     * @param droneId the ID of the drone
+     * @param droneId The ID of the drone to complete delivery for.
+     * @throws IllegalStateException if the drone is not in a delivering state.
      */
     @Override
     public void completeDelivery(Long droneId) {
@@ -192,9 +201,12 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Returns a specified drone to base after delivery.
+     * Commands a drone to return to base after completing a delivery.
+     * Changes the drone state to RETURNING if it's delivered.
+     * Updates the state to IDLE upon return.
      *
-     * @param droneId the ID of the drone
+     * @param droneId The ID of the drone to return to base.
+     * @throws IllegalStateException if the drone is not in a delivered state.
      */
     @Override
     public void returnToBase(Long droneId) {
