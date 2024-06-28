@@ -1,6 +1,3 @@
-Here is an updated `README.md` for the Dromed project, including the battery monitoring feature.
-
----
 
 # Dromed
 
@@ -60,11 +57,13 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-# To be implemented be later
-# Run integration tests using Maven's verify phase.
-# This command compiles the project's source code, runs any tests, 
-# and then packages the compiled code into a JAR file (if it hasn't been packaged already).
+# Integration tests to be implemented later
+Run integration tests using Maven's verify phase.
+This command compiles the project's source code, runs any tests, and then packages the compiled code into a JAR file (if it hasn't been packaged already).
+  ```sh
 mvn verify
+ ```
+
 
 
 ## REST API Endpoints
