@@ -1,4 +1,3 @@
-
 # Dromed
 
 This is a Spring Boot application that manages drones for delivering medications. It includes features such as registering drones, loading medications onto drones, checking available drones, and monitoring battery levels.
@@ -16,6 +15,9 @@ This is a Spring Boot application that manages drones for delivering medications
   - [Get Medications by Drone](#get-medications-by-drone)
   - [Load Drone with Medication](#load-drone-with-medication)
   - [Battery Monitoring](#battery-monitoring)
+  - [Start Delivery](#start-delivery)
+  - [Complete Delivery](#complete-delivery)
+  - [Return to Base](#return-to-base)
 - [Notes](#notes)
 
 ## Requirements
@@ -57,14 +59,12 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-# Integration tests to be implemented later
+2. Integration tests to be implemented later.
 Run integration tests using Maven's verify phase.
-This command compiles the project's source code, runs any tests, and then packages the compiled code into a JAR file (if it hasn't been packaged already).
+This command will compile the project's source code, runs any tests, and then packages the compiled code into a JAR file (if it hasn't been packaged already).
   ```sh
 mvn verify
  ```
-
-
 
 ## REST API Endpoints
 
@@ -72,16 +72,12 @@ mvn verify
 
 - **URL:** `/api/drones`
 - **Method:** `POST`
-- **Request Body:**
-    ```json
-    {
-        "serialNumber": "SN123",
-        "model": "LIGHTWEIGHT",
-        "weightLimit": 200,
-        "batteryCapacity": 80,
-        "state": "IDLE"
-    }
-    ```
+- **Request Parameters:**
+    - `serialNumber` (String)
+    - `model` (Model enum)
+    - `weightLimit` (int)
+    - `batteryCapacity` (int)
+    - `state` (State enum)
 - **Response:**
     ```json
     {
@@ -155,7 +151,7 @@ mvn verify
 
 ### Get Medications by Drone
 
-- **URL:** `/api/medications/drone/{droneId}`
+- **URL:** `/api/drones/{id}/medications`
 - **Method:** `GET`
 - **Response:**
     ```json
@@ -179,7 +175,7 @@ mvn verify
 
 ### Load Drone with Medication
 
-- **URL:** `/api/drone-medications/load`
+- **URL:** `/api/drones/load`
 - **Method:** `POST`
 - **Request Parameters:**
     - `droneId` (as query parameter)
@@ -213,6 +209,24 @@ mvn verify
         }
     }
     ```
+
+### Start Delivery
+
+- **URL:** `/api/drones/{id}/start-delivery`
+- **Method:** `POST`
+- **Response:** `200 OK`
+
+### Complete Delivery
+
+- **URL:** `/api/drones/{id}/complete-delivery`
+- **Method:** `POST`
+- **Response:** `200 OK`
+
+### Return to Base
+
+- **URL:** `/api/drones/{id}/return-to-base`
+- **Method:** `POST`
+- **Response:** `200 OK`
 
 ### Battery Monitoring
 
