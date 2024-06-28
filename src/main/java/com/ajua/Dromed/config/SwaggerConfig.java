@@ -1,4 +1,5 @@
 package com.ajua.Dromed.config;
+
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -54,7 +55,7 @@ public class SwaggerConfig {
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
                 .group("com.ajua")
-                .pathsToMatch("/**")
+                .pathsToMatch("/api/drones/**")
                 .build();
     }
 

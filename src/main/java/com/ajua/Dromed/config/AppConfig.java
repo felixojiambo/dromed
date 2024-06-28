@@ -1,6 +1,6 @@
 package com.ajua.Dromed.config;
 
-import com.ajua.Dromed.services.BatteryCheckServiceImpl;
+import com.ajua.Dromed.services.impl.BatteryCheckServiceImpl;
 import com.ajua.Dromed.services.impl.BatteryLoggerImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class AppConfig {
+
     /**
      * Defines and initializes the {@link BatteryCheckServiceImpl} bean.
      * Automatically registers a {@link BatteryLoggerImpl} as an observer to receive battery level updates.
@@ -19,8 +20,8 @@ public class AppConfig {
      */
     @Bean
     public BatteryCheckServiceImpl batteryCheckService() {
-        BatteryCheckServiceImpl service = new BatteryCheckServiceImpl();
-        service.addObserver(new BatteryLoggerImpl());
-        return service;
+        BatteryCheckServiceImpl batteryCheckService = new BatteryCheckServiceImpl();
+        batteryCheckService.addObserver(new BatteryLoggerImpl());
+        return batteryCheckService;
     }
 }
