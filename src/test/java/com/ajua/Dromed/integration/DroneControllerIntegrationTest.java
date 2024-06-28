@@ -74,7 +74,7 @@ public class DroneControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(drone)))
                 .andExpect(status().isCreated());
 
-        Long droneId = 1L; // Assuming the first drone registered has ID 1
+        Long droneId = 1L;
 
         mockMvc.perform(get("/api/drones/{id}/battery", droneId))
                 .andExpect(status().isOk())

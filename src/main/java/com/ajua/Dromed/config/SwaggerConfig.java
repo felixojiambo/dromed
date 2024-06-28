@@ -1,5 +1,4 @@
 package com.ajua.Dromed.config;
-
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -16,11 +15,20 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+/**
+ * Configuration class for setting up Swagger/OpenAPI documentation for the Drone Management API.
+ * It defines custom OpenAPI settings, groups APIs, and provides a command runner to open the Swagger UI automatically.
+ */
 @Configuration
 public class SwaggerConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SwaggerConfig.class);
 
+    /**
+     * Customizes the OpenAPI documentation with project-specific information such as title, description, version, contact, and license details.
+     *
+     * @return An OpenAPI object customized with project metadata.
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
@@ -37,6 +45,11 @@ public class SwaggerConfig {
                                 .url("http://springdoc.org")));
     }
 
+    /**
+     * Groups APIs under a common name and path prefix, facilitating organization in the generated Swagger UI.
+     *
+     * @return A GroupedOpenApi object that groups all paths under the specified group and path matcher.
+     */
     @Bean
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
@@ -45,6 +58,12 @@ public class SwaggerConfig {
                 .build();
     }
 
+    /**
+     * Opens the Swagger UI in the default web browser upon application startup.
+     * This bean uses a CommandLineRunner to execute the browser opening command after the application context is loaded.
+     *
+     * @return A CommandLineRunner that opens the Swagger UI.
+     */
     @Bean
     public CommandLineRunner openSwaggerUi() {
         return args -> {
@@ -69,5 +88,4 @@ public class SwaggerConfig {
             }
         };
     }
-
 }
