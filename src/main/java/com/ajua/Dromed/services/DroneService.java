@@ -15,6 +15,8 @@ import java.util.List;
 @Service
 public class DroneService {
 
+    private static final int MAX_WEIGHT_LIMIT = 500;
+
     @Autowired
     private DroneRepository droneRepository;
 
@@ -30,6 +32,9 @@ public class DroneService {
      */
     @Transactional
     public Drone registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
+        if (weightLimit > MAX_WEIGHT_LIMIT) {
+            throw new IllegalArgumentException("Weight limit cannot exceed 500 grams");
+        }
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
         return droneRepository.save(drone);
     }

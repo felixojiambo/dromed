@@ -46,4 +46,5 @@ public class MedicationService {
                 .map(DroneMedication::getMedication)
                 .collect(Collectors.toList());
     }
+
 }
