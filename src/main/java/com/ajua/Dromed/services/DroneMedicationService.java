@@ -7,6 +7,8 @@ import com.ajua.Dromed.models.Medication;
 import com.ajua.Dromed.repository.DroneMedicationRepository;
 import com.ajua.Dromed.repository.DroneRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -59,13 +61,15 @@ public class DroneMedicationService {
      * @param droneId The unique identifier of the drone.
      * @return A list of Medication objects associated with the drone.
      */
+
+
+    @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
     public List<Medication> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
                 .stream()
                 .map(DroneMedication::getMedication)
                 .collect(Collectors.toList());
     }
-
     /**
      * Checks the total weight of medications loaded onto a drone.
      *
