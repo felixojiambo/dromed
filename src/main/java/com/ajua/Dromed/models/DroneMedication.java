@@ -3,6 +3,7 @@ package com.ajua.Dromed.models;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
@@ -23,5 +24,10 @@ public class DroneMedication {
     private Medication medication;
 
     public DroneMedication(Drone drone, Medication medication) {
+        this.drone = drone;
+        this.medication = medication;
     }
+
+
 }
+

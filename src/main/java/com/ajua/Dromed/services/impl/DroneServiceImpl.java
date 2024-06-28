@@ -74,7 +74,7 @@ public class DroneServiceImpl implements DroneService {
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.get(0); // Get the first available drone
+        Drone drone = availableDrones.getFirst(); // Get the first available drone
 
         if (drone.getBatteryCapacity() < MIN_BATTERY_LEVEL) {
             throw new IllegalStateException("Battery level is below 25%");

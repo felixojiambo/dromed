@@ -121,9 +121,14 @@ public class DroneServiceImplTest {
 
         List<Medication> medications = droneService.getMedicationsByDrone(1L);
 
+        // Debug statements
+        System.out.println("Expected Medication 1: " + medication1);
+        System.out.println("Expected Medication 2: " + medication2);
+        System.out.println("Medications returned: " + medications);
+
         assertEquals(2, medications.size());
-        assertTrue(medications.contains(medication1));
-        assertTrue(medications.contains(medication2));
+        assertTrue(medications.contains(medication1), "Medications list should contain medication1");
+        assertTrue(medications.contains(medication2), "Medications list should contain medication2");
     }
 
     @Test
