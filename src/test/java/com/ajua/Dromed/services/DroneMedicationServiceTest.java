@@ -21,7 +21,6 @@ import com.ajua.Dromed.models.Medication;
 import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.repository.DroneMedicationRepository;
 import com.ajua.Dromed.repository.DroneRepository;
-import com.ajua.Dromed.services.DroneMedicationService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DroneMedicationServiceTest {

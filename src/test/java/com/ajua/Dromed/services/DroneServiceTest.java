@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import com.ajua.Dromed.services.impl.DroneServiceImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -18,13 +19,12 @@ import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.repository.DroneRepository;
-import com.ajua.Dromed.services.DroneService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DroneServiceTest {
 
     @InjectMocks
-    private DroneService droneService;
+    private DroneServiceImpl droneService;
 
     @Mock
     private DroneRepository droneRepository;

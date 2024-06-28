@@ -1,7 +1,7 @@
 package com.ajua.Dromed.controllers;
 
 import com.ajua.Dromed.models.Drone;
-import com.ajua.Dromed.services.DroneService;
+import com.ajua.Dromed.services.impl.DroneServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,7 @@ import java.util.List;
 public class DroneController {
 
     @Autowired
-    private DroneService droneService;
+    private DroneServiceImpl droneService;
 
     @PostMapping
     @Operation(summary = "Register a new drone")
