@@ -55,9 +55,8 @@ public class DroneController {
             }
     )
     public ResponseEntity<DroneMedication> loadDroneWithMedication(
-            @RequestParam Long droneId,
             @RequestBody Medication medication) {
-        DroneMedication droneMedication = droneService.loadDroneWithMedication(droneId, medication);
+        DroneMedication droneMedication = droneService.loadDroneWithMedication(medication);
         return new ResponseEntity<>(droneMedication, HttpStatus.CREATED);
     }
 
@@ -110,5 +109,47 @@ public class DroneController {
     )
     public ResponseEntity<Integer> getTotalLoadedWeight(@PathVariable Long id) {
         return new ResponseEntity<>(droneService.getTotalLoadedWeight(id), HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/start-delivery")
+    @Operation(
+            summary = "Start delivery for a drone",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Delivery started successfully"),
+                    @ApiResponse(responseCode = "404", description = "Drone not found"),
+                    @ApiResponse(responseCode = "400", description = "Drone is not ready for delivery")
+            }
+    )
+    public ResponseEntity<Void> startDelivery(@PathVariable Long id) {
+        droneService.startDelivery(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/complete-delivery")
+    @Operation(
+            summary = "Complete delivery for a drone",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Delivery completed successfully"),
+                    @ApiResponse(responseCode = "404", description = "Drone not found"),
+                    @ApiResponse(responseCode = "400", description = "Drone is not delivering")
+            }
+    )
+    public ResponseEntity<Void> completeDelivery(@PathVariable Long id) {
+        droneService.completeDelivery(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/return-to-base")
+    @Operation(
+            summary = "Return a drone to base",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Drone returned to base successfully"),
+                    @ApiResponse(responseCode = "404", description = "Drone not found"),
+                    @ApiResponse(responseCode = "400", description = "Drone is not in a state to return")
+            }
+    )
+    public ResponseEntity<Void> returnToBase(@PathVariable Long id) {
+        droneService.returnToBase(id);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

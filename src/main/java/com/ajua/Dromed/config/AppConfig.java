@@ -12,6 +12,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AppConfig {
 
+    private final BatteryLoggerImpl batteryLogger;
+
+    public AppConfig(BatteryLoggerImpl batteryLogger) {
+        this.batteryLogger = batteryLogger;
+    }
+
     /**
      * Defines and initializes the {@link BatteryCheckServiceImpl} bean.
      * Automatically registers a {@link BatteryLoggerImpl} as an observer to receive battery level updates.
@@ -21,7 +27,7 @@ public class AppConfig {
     @Bean
     public BatteryCheckServiceImpl batteryCheckService() {
         BatteryCheckServiceImpl batteryCheckService = new BatteryCheckServiceImpl();
-        batteryCheckService.addObserver(new BatteryLoggerImpl());
+        batteryCheckService.addObserver(batteryLogger);
         return batteryCheckService;
     }
 }

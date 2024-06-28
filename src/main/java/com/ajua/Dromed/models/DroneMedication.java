@@ -21,4 +21,7 @@ public class DroneMedication {
     @ManyToOne
     @JoinColumn(name = "medication_id", nullable = false)
     private Medication medication;
+
+    public DroneMedication(Drone drone, Medication medication) {
+    }
 }

@@ -3,21 +3,16 @@ package com.ajua.Dromed.services.impl;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.services.patterns.BatteryObserver;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * Implements the BatteryObserver interface to log battery levels of drones.
- * Whenever a drone's battery level is updated, this service logs the serial number and current battery capacity percentage.
- */
 @Service
 public class BatteryLoggerImpl implements BatteryObserver {
-    /**
-     * Updates the battery level of a given drone and logs the information.
-     *
-     * @param drone The drone whose battery level has been updated.
-     */
+
+    private static final Logger logger = LoggerFactory.getLogger(BatteryLoggerImpl.class);
+
     @Override
     public void update(Drone drone) {
-        System.out.println("Drone " + drone.getSerialNumber() + " battery level: " + drone.getBatteryCapacity() + "%");
+        logger.info("Drone " + drone.getSerialNumber() + " battery level: " + drone.getBatteryCapacity() + "%");
     }
-
 }

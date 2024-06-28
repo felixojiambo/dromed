@@ -1,7 +1,10 @@
 package com.ajua.Dromed.services.impl;
+
 import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.exceptions.ResourceNotFoundException;
+import com.ajua.Dromed.exceptions.DroneNotAvailableException;
+import com.ajua.Dromed.exceptions.OverweightException;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.models.Medication;
@@ -18,6 +21,9 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for managing drones.
+ */
 @Service
 public class DroneServiceImpl implements DroneService {
 
@@ -30,15 +36,14 @@ public class DroneServiceImpl implements DroneService {
     private DroneMedicationRepository droneMedicationRepository;
 
     /**
-     * Registers a new drone with the given parameters, ensuring the weight limit does not exceed the maximum allowed.
-     * Creates and saves a new drone instance using the DroneFactory.
+     * Registers a new drone with the specified parameters.
      *
-     * @param serialNumber Unique identifier for the drone.
-     * @param model The model of the drone.
-     * @param weightLimit Maximum weight the drone can carry.
-     * @param batteryCapacity Current battery capacity percentage.
-     * @param state The initial state of the drone.
-     * @return The saved Drone object.
+     * @param serialNumber the serial number of the drone
+     * @param model the model of the drone
+     * @param weightLimit the weight limit of the drone
+     * @param batteryCapacity the battery capacity of the drone
+     * @param state the state of the drone
+     * @return the registered drone
      */
     @Override
     @Transactional
@@ -51,43 +56,57 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Loads a specified medication onto a drone, ensuring the drone's battery level is sufficient and the total weight does not exceed the drone's limit.
-     * Saves the association between the drone and medication.
+     * Loads a drone with a specified medication.
      *
-     * @param droneId The unique identifier of the drone to load.
-     * @param medication The medication to load onto the drone.
-     * @return A DroneMedication object representing the association.
+     * @param medication the medication to load
+     * @return the DroneMedication record
      */
     @Override
     @Transactional
-    public DroneMedication loadDroneWithMedication(Long droneId, Medication medication) {
-        Drone drone = droneRepository.findById(droneId)
-                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
+    public DroneMedication loadDroneWithMedication(Medication medication) {
+        List<Drone> availableDrones = droneRepository.findByState(State.IDLE);
+
+        if (availableDrones.isEmpty()) {
+            throw new DroneNotAvailableException("No available drones for loading");
+        }
+
+        Drone drone = availableDrones.getFirst(); // Get the first available drone
 
         if (drone.getBatteryCapacity() < 25) {
             throw new IllegalStateException("Battery level is below 25%");
         }
 
-        int totalWeight = droneMedicationRepository.findByDroneId(droneId)
-                .stream()
-                .mapToInt(dm -> dm.getMedication().getWeight())
-                .sum();
+        int totalWeight = getTotalLoadedWeight(drone.getId());
 
         if (totalWeight + medication.getWeight() > drone.getWeightLimit()) {
-            throw new IllegalStateException("Weight limit exceeded");
+            throw new OverweightException("Weight limit exceeded");
         }
+
+        if (!drone.getState().equals(State.IDLE) && !drone.getState().equals(State.LOADING)) {
+            throw new DroneNotAvailableException("Drone is not available for loading");
+        }
+
+        drone.setState(State.LOADING);
+        droneRepository.save(drone);
 
         DroneMedication droneMedication = new DroneMedication();
         droneMedication.setDrone(drone);
         droneMedication.setMedication(medication);
 
-        return droneMedicationRepository.save(droneMedication);
+        droneMedicationRepository.save(droneMedication);
+
+        // Update state to LOADED if the drone is fully loaded
+        drone.setState(State.LOADED);
+        droneRepository.save(drone);
+
+        return droneMedication;
     }
+
     /**
-     * Retrieves all medications associated with a specific drone, applying retry logic for transient failures.
+     * Retrieves the list of medications loaded on a specified drone.
      *
-     * @param droneId The unique identifier of the drone.
-     * @return A list of Medication objects associated with the drone.
+     * @param droneId the ID of the drone
+     * @return the list of medications
      */
     @Override
     @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
@@ -99,20 +118,21 @@ public class DroneServiceImpl implements DroneService {
     }
 
     /**
-     * Retrieves all drones currently in the IDLE state, indicating availability for loading.
+     * Retrieves the list of available drones (in IDLE state).
      *
-     * @return A list of available drones.
+     * @return the list of available drones
      */
     @Override
     @Transactional
     public List<Drone> getAvailableDrones() {
         return droneRepository.findByState(State.IDLE);
     }
+
     /**
-     * Checks the battery level of a drone identified by its ID.
+     * Checks the battery level of a specified drone.
      *
-     * @param droneId The unique identifier of the drone.
-     * @return The current battery capacity percentage of the drone.
+     * @param droneId the ID of the drone
+     * @return the battery level
      */
     @Override
     public int checkDroneBatteryLevel(Long droneId) {
@@ -120,11 +140,12 @@ public class DroneServiceImpl implements DroneService {
                 .map(Drone::getBatteryCapacity)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
     }
+
     /**
-     * Calculates the total weight of medications loaded onto a drone.
+     * Calculates the total weight of the medications loaded on a specified drone.
      *
-     * @param droneId The unique identifier of the drone.
-     * @return The total weight of medications loaded onto the drone.
+     * @param droneId the ID of the drone
+     * @return the total loaded weight
      */
     @Override
     public int getTotalLoadedWeight(Long droneId) {
@@ -132,5 +153,63 @@ public class DroneServiceImpl implements DroneService {
                 .stream()
                 .mapToInt(dm -> dm.getMedication().getWeight())
                 .sum();
+    }
+
+    /**
+     * Starts the delivery process for a specified drone.
+     *
+     * @param droneId the ID of the drone
+     */
+    @Override
+    public void startDelivery(Long droneId) {
+        Drone drone = droneRepository.findById(droneId)
+                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
+
+        if (!drone.getState().equals(State.LOADED)) {
+            throw new IllegalStateException("Drone is not ready for delivery");
+        }
+
+        drone.setState(State.DELIVERING);
+        droneRepository.save(drone);
+    }
+
+    /**
+     * Completes the delivery process for a specified drone.
+     *
+     * @param droneId the ID of the drone
+     */
+    @Override
+    public void completeDelivery(Long droneId) {
+        Drone drone = droneRepository.findById(droneId)
+                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
+
+        if (!drone.getState().equals(State.DELIVERING)) {
+            throw new IllegalStateException("Drone is not delivering");
+        }
+
+        drone.setState(State.DELIVERED);
+        droneRepository.save(drone);
+    }
+
+    /**
+     * Returns a specified drone to base after delivery.
+     *
+     * @param droneId the ID of the drone
+     */
+    @Override
+    public void returnToBase(Long droneId) {
+        Drone drone = droneRepository.findById(droneId)
+                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
+
+        if (!drone.getState().equals(State.DELIVERED)) {
+            throw new IllegalStateException("Drone is not in a state to return");
+        }
+
+        drone.setState(State.RETURNING);
+        droneRepository.save(drone);
+
+        // After returning
+        drone.setState(State.IDLE);
+        droneRepository.save(drone);
     }
 }

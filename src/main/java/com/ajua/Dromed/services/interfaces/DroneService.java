@@ -13,7 +13,7 @@ public interface DroneService {
 
     Drone registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state);
 
-    DroneMedication loadDroneWithMedication(Long droneId, Medication medication);
+    DroneMedication loadDroneWithMedication( Medication medication);
 
     List<Medication> getMedicationsByDrone(Long droneId);
 
@@ -22,4 +22,10 @@ public interface DroneService {
     int checkDroneBatteryLevel(Long droneId);
 
     int getTotalLoadedWeight(Long droneId);
+
+    void startDelivery(Long droneId);
+
+    void completeDelivery(Long droneId);
+
+    void returnToBase(Long droneId);
 }

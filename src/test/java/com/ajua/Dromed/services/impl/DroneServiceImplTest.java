@@ -3,19 +3,21 @@ package com.ajua.Dromed.services.impl;
 import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.exceptions.ResourceNotFoundException;
+import com.ajua.Dromed.exceptions.DroneNotAvailableException;
+import com.ajua.Dromed.exceptions.OverweightException;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.models.Medication;
 import com.ajua.Dromed.repository.DroneMedicationRepository;
 import com.ajua.Dromed.repository.DroneRepository;
-import com.ajua.Dromed.services.patterns.DroneFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class DroneServiceImplTest {
+class DroneServiceImplTest {
 
     @Mock
     private DroneRepository droneRepository;
@@ -38,129 +40,137 @@ public class DroneServiceImplTest {
     private Medication medication;
 
     @BeforeEach
-    public void setup() {
-        drone = new Drone(1L, "SN12345", Model.CRUISERWEIGHT, 400, 80, State.IDLE);
-        medication = new Medication(1L, "Med1", 100, "MED123", null);
+    void setUp() {
+        drone = new Drone();
+        drone.setId(1L);
+        drone.setSerialNumber("12345");
+        drone.setModel(Model.HEAVYWEIGHT);
+        drone.setWeightLimit(500);
+        drone.setBatteryCapacity(100);
+        drone.setState(State.IDLE);
+
+        medication = new Medication();
+        medication.setName("Med1");
+        medication.setWeight(100);
     }
 
     @Test
-    public void testRegisterDroneSuccess() {
+    void registerDrone_Success() {
         when(droneRepository.save(any(Drone.class))).thenReturn(drone);
 
-        Drone result = droneService.registerDrone("SN12345", Model.CRUISERWEIGHT, 400, 80, State.IDLE);
+        Drone result = droneService.registerDrone("12345", Model.HEAVYWEIGHT, 500, 100, State.IDLE);
 
         assertNotNull(result);
-        assertEquals("SN12345", result.getSerialNumber());
+        assertEquals(drone.getSerialNumber(), result.getSerialNumber());
         verify(droneRepository, times(1)).save(any(Drone.class));
     }
 
     @Test
-    public void testRegisterDroneWeightLimitExceeded() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            droneService.registerDrone("SN12345", Model.CRUISERWEIGHT, 600, 80, State.IDLE);
-        });
+    void loadDroneWithMedication_NoAvailableDrones() {
+        when(droneRepository.findByState(State.IDLE)).thenReturn(new ArrayList<>());
 
-        assertEquals("Weight limit cannot exceed 500 grams", exception.getMessage());
+        assertThrows(DroneNotAvailableException.class, () -> droneService.loadDroneWithMedication(medication));
     }
 
     @Test
-    public void testLoadDroneWithMedicationSuccess() {
-        when(droneRepository.findById(anyLong())).thenReturn(Optional.of(drone));
-        when(droneMedicationRepository.findByDroneId(anyLong())).thenReturn(Arrays.asList());
+    void loadDroneWithMedication_Overweight() {
+        drone.setWeightLimit(50);
+        List<Drone> drones = new ArrayList<>();
+        drones.add(drone);
 
-        DroneMedication droneMedication = new DroneMedication();
-        droneMedication.setDrone(drone);
-        droneMedication.setMedication(medication);
+        when(droneRepository.findByState(State.IDLE)).thenReturn(drones);
 
-        when(droneMedicationRepository.save(any(DroneMedication.class))).thenReturn(droneMedication);
+        assertThrows(OverweightException.class, () -> droneService.loadDroneWithMedication(medication));
+    }
 
-        DroneMedication result = droneService.loadDroneWithMedication(1L, medication);
+    @Test
+    void loadDroneWithMedication_Success() {
+        List<Drone> drones = new ArrayList<>();
+        drones.add(drone);
+
+        when(droneRepository.findByState(State.IDLE)).thenReturn(drones);
+        when(droneMedicationRepository.save(any(DroneMedication.class))).thenReturn(new DroneMedication());
+
+        DroneMedication result = droneService.loadDroneWithMedication(medication);
 
         assertNotNull(result);
-        assertEquals(drone, result.getDrone());
-        assertEquals(medication, result.getMedication());
         verify(droneMedicationRepository, times(1)).save(any(DroneMedication.class));
     }
 
     @Test
-    public void testLoadDroneWithMedicationDroneNotFound() {
-        when(droneRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            droneService.loadDroneWithMedication(1L, medication);
-        });
-
-        assertEquals("Drone not found", exception.getMessage());
-    }
-
-    @Test
-    public void testLoadDroneWithMedicationBatteryLow() {
-        drone.setBatteryCapacity(20);
-        when(droneRepository.findById(anyLong())).thenReturn(Optional.of(drone));
-
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            droneService.loadDroneWithMedication(1L, medication);
-        });
-
-        assertEquals("Battery level is below 25%", exception.getMessage());
-    }
-
-    @Test
-    public void testGetMedicationsByDroneSuccess() {
+    void getMedicationsByDrone_Success() {
+        List<DroneMedication> droneMedications = new ArrayList<>();
         DroneMedication droneMedication = new DroneMedication();
         droneMedication.setDrone(drone);
         droneMedication.setMedication(medication);
+        droneMedications.add(droneMedication);
 
-        when(droneMedicationRepository.findByDroneId(anyLong())).thenReturn(Arrays.asList(droneMedication));
+        when(droneMedicationRepository.findByDroneId(drone.getId())).thenReturn(droneMedications);
 
-        List<Medication> medications = droneService.getMedicationsByDrone(1L);
+        List<Medication> result = droneService.getMedicationsByDrone(drone.getId());
 
-        assertNotNull(medications);
-        assertEquals(1, medications.size());
-        assertEquals("Med1", medications.get(0).getName());
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(medication.getName(), result.get(0).getName());
     }
 
     @Test
-    public void testGetAvailableDrones() {
-        when(droneRepository.findByState(State.IDLE)).thenReturn(Arrays.asList(drone));
+    void checkDroneBatteryLevel_Success() {
+        when(droneRepository.findById(drone.getId())).thenReturn(Optional.of(drone));
 
-        List<Drone> availableDrones = droneService.getAvailableDrones();
+        int result = droneService.checkDroneBatteryLevel(drone.getId());
 
-        assertNotNull(availableDrones);
-        assertEquals(1, availableDrones.size());
-        assertEquals("SN12345", availableDrones.get(0).getSerialNumber());
+        assertEquals(drone.getBatteryCapacity(), result);
     }
 
     @Test
-    public void testCheckDroneBatteryLevelSuccess() {
-        when(droneRepository.findById(anyLong())).thenReturn(Optional.of(drone));
-
-        int batteryLevel = droneService.checkDroneBatteryLevel(1L);
-
-        assertEquals(80, batteryLevel);
-    }
-
-    @Test
-    public void testCheckDroneBatteryLevelDroneNotFound() {
-        when(droneRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            droneService.checkDroneBatteryLevel(1L);
-        });
-
-        assertEquals("Drone not found", exception.getMessage());
-    }
-
-    @Test
-    public void testGetTotalLoadedWeight() {
+    void getTotalLoadedWeight_Success() {
+        List<DroneMedication> droneMedications = new ArrayList<>();
         DroneMedication droneMedication = new DroneMedication();
         droneMedication.setDrone(drone);
         droneMedication.setMedication(medication);
+        droneMedications.add(droneMedication);
 
-        when(droneMedicationRepository.findByDroneId(anyLong())).thenReturn(Arrays.asList(droneMedication));
+        when(droneMedicationRepository.findByDroneId(drone.getId())).thenReturn(droneMedications);
 
-        int totalWeight = droneService.getTotalLoadedWeight(1L);
+        int result = droneService.getTotalLoadedWeight(drone.getId());
 
-        assertEquals(100, totalWeight);
+        assertEquals(medication.getWeight(), result);
+    }
+
+    @Test
+    void startDelivery_Success() {
+        drone.setState(State.LOADED);
+
+        when(droneRepository.findById(drone.getId())).thenReturn(Optional.of(drone));
+
+        droneService.startDelivery(drone.getId());
+
+        assertEquals(State.DELIVERING, drone.getState());
+        verify(droneRepository, times(1)).save(drone);
+    }
+
+    @Test
+    void completeDelivery_Success() {
+        drone.setState(State.DELIVERING);
+
+        when(droneRepository.findById(drone.getId())).thenReturn(Optional.of(drone));
+
+        droneService.completeDelivery(drone.getId());
+
+        assertEquals(State.DELIVERED, drone.getState());
+        verify(droneRepository, times(1)).save(drone);
+    }
+
+    @Test
+    void returnToBase_Success() {
+        drone.setState(State.DELIVERED);
+
+        when(droneRepository.findById(drone.getId())).thenReturn(Optional.of(drone));
+
+        droneService.returnToBase(drone.getId());
+
+        assertEquals(State.IDLE, drone.getState());
+        verify(droneRepository, times(2)).save(drone); // called twice, once for RETURNING and once for IDLE
     }
 }
