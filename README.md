@@ -22,7 +22,7 @@ This is a Spring Boot application that manages drones for delivering medications
 
 ## Requirements
 
-- Java 17 or later
+- Java 21 or later
 - Maven 3.6.0 or later
 
 ## Setup
