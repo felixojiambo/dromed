@@ -31,5 +31,5 @@ public interface DroneService {
     void returnToBase(Long droneId);
 
     @Transactional
-    ResponseEntity<Void> markIdle(Long id);
+    ResponseEntity<Object> markIdle(Long id);
 }

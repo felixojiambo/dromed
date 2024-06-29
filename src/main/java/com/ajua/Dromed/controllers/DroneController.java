@@ -54,7 +54,7 @@ public class DroneController {
                     @ApiResponse(responseCode = "409", description = "Drone is not in the returning state")
             }
     )
-    public ResponseEntity<Void> markIdle(@PathVariable Long id) {
+    public ResponseEntity<Object> markIdle(@PathVariable Long id) {
         return droneService.markIdle(id);
     }
     @PostMapping("/load-medication")
