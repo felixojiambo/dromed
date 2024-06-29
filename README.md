@@ -9,11 +9,11 @@ This is a Spring Boot application that manages drones for delivering medications
 - [Testing](#testing)
 - [REST API Endpoints](#rest-api-endpoints)
   - [Register a Drone](#register-a-drone)
+  - [Mark Drone as Idle](#mark-drone-as-idle)
+  - [Load Drone with Medication](#load-drone-with-medication)
   - [Get Available Drones](#get-available-drones)
   - [Check Drone Battery Level](#check-drone-battery-level)
-  - [Load Medication](#load-medication)
   - [Get Medications by Drone](#get-medications-by-drone)
-  - [Load Drone with Medication](#load-drone-with-medication)
   - [Start Delivery](#start-delivery)
   - [Complete Delivery](#complete-delivery)
   - [Return to Base](#return-to-base)
@@ -59,131 +59,51 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-
 ## REST API Endpoints
 
 ### Register a Drone
 
-- **URL:** `/api/drones`
+- **URL:** `/api/v1/drones/register`
 - **Method:** `POST`
-- **Request Body:**
-    ```json
-    {
-        "serialNumber": "SN123",
-        "model": "LIGHTWEIGHT",
-        "weightLimit": 200,
-        "batteryCapacity": 80,
-        "state": "IDLE"
-    }
-    ```
+- **Request Parameters:**
+    - `serialNumber`
+    - `model`
+    - `weightLimit`
+    - `batteryCapacity`
+    - `state`
 - **Response:**
     ```json
     {
-        "id": 1,
-        "serialNumber": "SN123",
-        "model": "LIGHTWEIGHT",
-        "weightLimit": 200,
-        "batteryCapacity": 80,
-        "state": "IDLE"
+        "success": true,
+        "message": "Drone registered successfully",
+        "data": {
+            "serialNumber": "SN123",
+            "model": "LIGHTWEIGHT",
+            "weightLimit": 200,
+            "batteryCapacity": 80,
+            "state": "IDLE"
+        }
     }
     ```
 - **Purpose:** Registers a new drone in the system with the specified details.
 
-### Get Available Drones
+### Mark Drone as Idle
 
-- **URL:** `/api/drones/available`
-- **Method:** `GET`
-- **Response:**
-    ```json
-    [
-        {
-            "id": 1,
-            "serialNumber": "SN123",
-            "model": "LIGHTWEIGHT",
-            "weightLimit": 200,
-            "batteryCapacity": 80,
-            "state": "IDLE"
-        },
-        {
-            "id": 2,
-            "serialNumber": "SN124",
-            "model": "MIDDLEWEIGHT",
-            "weightLimit": 300,
-            "batteryCapacity": 60,
-            "state": "IDLE"
-        }
-    ]
-    ```
-- **Purpose:** Retrieves a list of all drones that are currently available for use.
-
-### Check Drone Battery Level
-
-- **URL:** `/api/drones/{id}/battery`
-- **Method:** `GET`
-- **Response:**
-    ```json
-    {
-        "batteryCapacity": 80
-    }
-    ```
-- **Purpose:** Checks and returns the battery level of the specified drone.
-
-### Load Medication
-
-- **URL:** `/api/medications`
+- **URL:** `/api/v1/drones/{id}/mark-idle`
 - **Method:** `POST`
-- **Request Body:**
-    ```json
-    {
-        "name": "Paracetamol",
-        "weight": 50,
-        "code": "PARA_001",
-        "imageUrl": "http://example.com/images/paracetamol.jpg"
-    }
-    ```
 - **Response:**
     ```json
     {
-        "id": 1,
-        "name": "Paracetamol",
-        "weight": 50,
-        "code": "PARA_001",
-        "imageUrl": "http://example.com/images/paracetamol.jpg"
+        "success": true,
+        "message": "Drone marked as idle successfully"
     }
     ```
-- **Purpose:** Adds a new medication to the system with the specified details.
-
-### Get Medications by Drone
-
-- **URL:** `/api/drones/{id}/medications`
-- **Method:** `GET`
-- **Response:**
-    ```json
-    [
-        {
-            "id": 1,
-            "name": "Paracetamol",
-            "weight": 50,
-            "code": "PARA_001",
-            "imageUrl": "http://example.com/images/paracetamol.jpg"
-        },
-        {
-            "id": 2,
-            "name": "Aspirin",
-            "weight": 30,
-            "code": "ASPI_002",
-            "imageUrl": "http://example.com/images/aspirin.jpg"
-        }
-    ]
-    ```
-- **Purpose:** Retrieves a list of medications loaded onto the specified drone.
+- **Purpose:** Marks a drone as idle after it has returned to base.
 
 ### Load Drone with Medication
 
-- **URL:** `/api/drones/load`
+- **URL:** `/api/v1/drones/load-medication`
 - **Method:** `POST`
-- **Request Parameters:**
-    - `droneId` (as query parameter)
 - **Request Body:**
     ```json
     {
@@ -196,53 +116,141 @@ The application will be accessible at `http://localhost:8080`.
 - **Response:**
     ```json
     {
-        "id": 1,
-        "drone": {
-            "id": 1,
-            "serialNumber": "SN123",
-            "model": "LIGHTWEIGHT",
-            "weightLimit": 200,
-            "batteryCapacity": 80,
-            "state": "IDLE"
-        },
-        "medication": {
-            "id": 1,
-            "name": "Paracetamol",
-            "weight": 50,
-            "code": "PARA_001",
-            "imageUrl": "http://example.com/images/paracetamol.jpg"
+        "success": true,
+        "message": "Medication loaded successfully",
+        "data": {
+            "drone": {
+                "id": 1,
+                "serialNumber": "SN123",
+                "model": "LIGHTWEIGHT",
+                "weightLimit": 200,
+                "batteryCapacity": 80,
+                "state": "LOADING"
+            },
+            "medication": {
+                "id": 1,
+                "name": "Paracetamol",
+                "weight": 50,
+                "code": "PARA_001",
+                "imageUrl": "http://example.com/images/paracetamol.jpg"
+            }
         }
     }
     ```
 - **Purpose:** Loads the specified medication onto the specified drone.
 
+### Get Available Drones
+
+- **URL:** `/api/v1/drones/available`
+- **Method:** `GET`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "List of available drones",
+        "data": [
+            {
+                "id": 1,
+                "serialNumber": "SN123",
+                "model": "LIGHTWEIGHT",
+                "weightLimit": 200,
+                "batteryCapacity": 80,
+                "state": "IDLE"
+            },
+            {
+                "id": 2,
+                "serialNumber": "SN124",
+                "model": "MIDDLEWEIGHT",
+                "weightLimit": 300,
+                "batteryCapacity": 60,
+                "state": "IDLE"
+            }
+        ]
+    }
+    ```
+- **Purpose:** Retrieves a list of all drones that are currently available for use.
+
+### Check Drone Battery Level
+
+- **URL:** `/api/v1/drones/{droneId}/battery-level`
+- **Method:** `GET`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "Battery level retrieved successfully",
+        "data": 80
+    }
+    ```
+- **Purpose:** Checks and returns the battery level of the specified drone.
+
+### Get Medications by Drone
+
+- **URL:** `/api/v1/drones/{droneId}/medications`
+- **Method:** `GET`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "List of medications retrieved successfully",
+        "data": [
+            {
+                "id": 1,
+                "name": "Paracetamol",
+                "weight": 50,
+                "code": "PARA_001",
+                "imageUrl": "http://example.com/images/paracetamol.jpg"
+            },
+            {
+                "id": 2,
+                "name": "Aspirin",
+                "weight": 30,
+                "code": "ASPI_002",
+                "imageUrl": "http://example.com/images/aspirin.jpg"
+            }
+        ]
+    }
+    ```
+- **Purpose:** Retrieves a list of medications loaded onto the specified drone.
+
 ### Start Delivery
 
-- **URL:** `/api/drones/{id}/start-delivery`
+- **URL:** `/api/v1/drones/{droneId}/start-delivery`
 - **Method:** `POST`
-- **Response:** `200 OK`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "Delivery started successfully"
+    }
+    ```
 - **Purpose:** Marks the specified drone as starting a delivery.
 
 ### Complete Delivery
 
-- **URL:** `/api/drones/{id}/complete-delivery`
+- **URL:** `/api/v1/drones/{droneId}/complete-delivery`
 - **Method:** `POST`
-- **Response:** `200 OK`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "Delivery completed successfully"
+    }
+    ```
 - **Purpose:** Marks the specified drone as having completed its delivery.
 
 ### Return to Base
 
-- **URL:** `/api/drones/{id}/return-to-base`
+- **URL:** `/api/v1/drones/{droneId}/return-to-base`
 - **Method:** `POST`
-- **Response:** `200 OK`
+- **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "Drone returned to base successfully"
+    }
+    ```
 - **Purpose:** Marks the specified drone as returning to the base after completing its tasks.
-
-### Mark Drone as Idle
-
-- **URL:** `/api/drones/{id}/mark-idle`
-- **Method:** `POST`
-- **Response:** `200 OK`
-- **Purpose:** Marks the specified drone as idle after it has returned to base.
 
 ### Battery Monitoring
 
