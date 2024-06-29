@@ -1,0 +1,48 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin' # Options are: 'zulu', 'adopt', 'temurin', 'oracle', 'microsoft'
+        java-version: '21'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Install dependencies
+      run: mvn clean install --no-transfer-progress
+
+    - name: Run unit tests
+      run: mvn test --no-transfer-progress
+
+    - name: Build the application
+      run: mvn clean package --no-transfer-progress
+
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: java-app
+        path: target/*.jar
