@@ -14,10 +14,10 @@ This is a Spring Boot application that manages drones for delivering medications
   - [Load Medication](#load-medication)
   - [Get Medications by Drone](#get-medications-by-drone)
   - [Load Drone with Medication](#load-drone-with-medication)
-  - [Battery Monitoring](#battery-monitoring)
   - [Start Delivery](#start-delivery)
   - [Complete Delivery](#complete-delivery)
   - [Return to Base](#return-to-base)
+  - [Battery Monitoring](#battery-monitoring)
 - [Notes](#notes)
 
 ## Requirements
@@ -59,12 +59,6 @@ The application will be accessible at `http://localhost:8080`.
     mvn test
     ```
 
-2. Integration tests to be implemented later.
-Run integration tests using Maven's verify phase.
-This command will compile the project's source code, runs any tests, and then packages the compiled code into a JAR file (if it hasn't been packaged already).
-  ```sh
-mvn verify
- ```
 
 ## REST API Endpoints
 
@@ -72,12 +66,16 @@ mvn verify
 
 - **URL:** `/api/drones`
 - **Method:** `POST`
-- **Request Parameters:**
-    - `serialNumber` (String)
-    - `model` (Model enum)
-    - `weightLimit` (int)
-    - `batteryCapacity` (int)
-    - `state` (State enum)
+- **Request Body:**
+    ```json
+    {
+        "serialNumber": "SN123",
+        "model": "LIGHTWEIGHT",
+        "weightLimit": 200,
+        "batteryCapacity": 80,
+        "state": "IDLE"
+    }
+    ```
 - **Response:**
     ```json
     {
@@ -89,6 +87,7 @@ mvn verify
         "state": "IDLE"
     }
     ```
+- **Purpose:** Registers a new drone in the system with the specified details.
 
 ### Get Available Drones
 
@@ -115,6 +114,7 @@ mvn verify
         }
     ]
     ```
+- **Purpose:** Retrieves a list of all drones that are currently available for use.
 
 ### Check Drone Battery Level
 
@@ -122,8 +122,11 @@ mvn verify
 - **Method:** `GET`
 - **Response:**
     ```json
-    80
+    {
+        "batteryCapacity": 80
+    }
     ```
+- **Purpose:** Checks and returns the battery level of the specified drone.
 
 ### Load Medication
 
@@ -148,6 +151,7 @@ mvn verify
         "imageUrl": "http://example.com/images/paracetamol.jpg"
     }
     ```
+- **Purpose:** Adds a new medication to the system with the specified details.
 
 ### Get Medications by Drone
 
@@ -172,6 +176,7 @@ mvn verify
         }
     ]
     ```
+- **Purpose:** Retrieves a list of medications loaded onto the specified drone.
 
 ### Load Drone with Medication
 
@@ -209,29 +214,41 @@ mvn verify
         }
     }
     ```
+- **Purpose:** Loads the specified medication onto the specified drone.
 
 ### Start Delivery
 
 - **URL:** `/api/drones/{id}/start-delivery`
 - **Method:** `POST`
 - **Response:** `200 OK`
+- **Purpose:** Marks the specified drone as starting a delivery.
 
 ### Complete Delivery
 
 - **URL:** `/api/drones/{id}/complete-delivery`
 - **Method:** `POST`
 - **Response:** `200 OK`
+- **Purpose:** Marks the specified drone as having completed its delivery.
 
 ### Return to Base
 
 - **URL:** `/api/drones/{id}/return-to-base`
 - **Method:** `POST`
 - **Response:** `200 OK`
+- **Purpose:** Marks the specified drone as returning to the base after completing its tasks.
+
+### Mark Drone as Idle
+
+- **URL:** `/api/drones/{id}/mark-idle`
+- **Method:** `POST`
+- **Response:** `200 OK`
+- **Purpose:** Marks the specified drone as idle after it has returned to base.
 
 ### Battery Monitoring
 
 - **Battery Check Service:** The application includes a battery monitoring service that periodically checks the battery levels of all drones.
 - **Logging:** Battery levels are logged to help monitor battery usage and identify when drones need recharging.
+- **Purpose:** Ensures that the drones' battery levels are constantly monitored and logged for optimal operation and maintenance.
 
 ## Notes
 
