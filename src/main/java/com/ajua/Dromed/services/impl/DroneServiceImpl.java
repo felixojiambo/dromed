@@ -17,8 +17,6 @@ import com.ajua.Dromed.services.patterns.DroneFactory;
 import com.ajua.Dromed.utils.DTOConverter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +43,6 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
         return DTOConverter.toDroneDTO(droneRepository.save(drone));
     }
-
 
     @Override
     @Transactional

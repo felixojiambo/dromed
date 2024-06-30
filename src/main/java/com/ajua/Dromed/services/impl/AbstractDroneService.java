@@ -1,4 +1,5 @@
 package com.ajua.Dromed.services.impl;
+
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.exceptions.DroneNotAvailableException;
 import com.ajua.Dromed.exceptions.OverweightException;
@@ -11,6 +12,7 @@ public abstract class AbstractDroneService {
 
     protected void validateLoadingConditions(Drone drone, Medication medication) {
         validateBatteryLevel(drone.getBatteryCapacity());
+        validateMedication(medication);
 
         int totalWeight = getTotalLoadedWeight(drone.getId());
         if (totalWeight + medication.getWeight() > drone.getWeightLimit()) {
@@ -25,6 +27,18 @@ public abstract class AbstractDroneService {
     protected void validateBatteryLevel(int batteryCapacity) {
         if (batteryCapacity < MIN_BATTERY_LEVEL) {
             throw new IllegalStateException("Battery level is below 25%");
+        }
+    }
+
+    protected void validateMedication(Medication medication) {
+        String namePattern = "^[a-zA-Z0-9-_]+$";
+        String codePattern = "^[A-Z0-9_]+$";
+
+        if (!medication.getName().matches(namePattern)) {
+            throw new IllegalArgumentException("Medication name contains invalid characters");
+        }
+        if (!medication.getCode().matches(codePattern)) {
+            throw new IllegalArgumentException("Medication code contains invalid characters");
         }
     }
 
