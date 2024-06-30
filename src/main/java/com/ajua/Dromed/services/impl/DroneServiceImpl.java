@@ -6,7 +6,6 @@ import com.ajua.Dromed.dtos.MedicationDTO;
 import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.exceptions.DroneNotAvailableException;
-import com.ajua.Dromed.exceptions.OverweightException;
 import com.ajua.Dromed.exceptions.ResourceNotFoundException;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.models.DroneMedication;
@@ -15,6 +14,7 @@ import com.ajua.Dromed.repository.DroneMedicationRepository;
 import com.ajua.Dromed.repository.DroneRepository;
 import com.ajua.Dromed.services.interfaces.DroneService;
 import com.ajua.Dromed.services.patterns.DroneFactory;
+import com.ajua.Dromed.utils.DTOConverter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
@@ -25,74 +25,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of DroneService interface that provides
- * methods for managing drones and their operations.
- */
 @Service
-public class DroneServiceImpl implements DroneService {
-
-    private static final int MAX_WEIGHT_LIMIT = 500; // Max weight limit for drones
-    private static final int MIN_BATTERY_LEVEL = 25; // Min battery level for loading
+public class DroneServiceImpl extends AbstractDroneService implements DroneService {
 
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
 
-    /**
-     * Constructor to initialize drone and drone medication repositories.
-     *
-     * @param droneRepository           Repository for managing drones.
-     * @param droneMedicationRepository Repository for managing drone-medication relationships.
-     */
     public DroneServiceImpl(DroneRepository droneRepository, DroneMedicationRepository droneMedicationRepository) {
         this.droneRepository = droneRepository;
         this.droneMedicationRepository = droneMedicationRepository;
     }
 
-    /**
-     * Converts a Drone entity to its corresponding DTO.
-     *
-     * @param drone The Drone entity to convert.
-     * @return Corresponding DroneDTO.
-     */
-    private DroneDTO toDroneDTO(Drone drone) {
-        return new DroneDTO(drone.getId(), drone.getSerialNumber(), drone.getModel(),
-                drone.getWeightLimit(), drone.getBatteryCapacity(), drone.getState());
-    }
-
-    /**
-     * Converts a Medication entity to its corresponding DTO.
-     *
-     * @param medication The Medication entity to convert.
-     * @return Corresponding MedicationDTO.
-     */
-    private MedicationDTO toMedicationDTO(Medication medication) {
-        return new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(),
-                medication.getCode(), medication.getImageUrl());
-    }
-
-    /**
-     * Converts a DroneMedication entity to its corresponding DTO.
-     *
-     * @param droneMedication The DroneMedication entity to convert.
-     * @return Corresponding DroneMedicationDTO.
-     */
-    private DroneMedicationDTO toDroneMedicationDTO(DroneMedication droneMedication) {
-        return new DroneMedicationDTO(droneMedication.getId(), toDroneDTO(droneMedication.getDrone()),
-                toMedicationDTO(droneMedication.getMedication()));
-    }
-
-    /**
-     * Registers a new drone with the specified parameters.
-     *
-     * @param serialNumber    Serial number of the drone.
-     * @param model           Model of the drone.
-     * @param weightLimit     Weight limit of the drone.
-     * @param batteryCapacity Battery capacity of the drone.
-     * @param state           Initial state of the drone.
-     * @return The newly registered DroneDTO object.
-     * @throws IllegalArgumentException if weight limit exceeds the maximum allowed.
-     */
     @Override
     @Transactional
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
@@ -100,27 +43,15 @@ public class DroneServiceImpl implements DroneService {
             throw new IllegalArgumentException("Weight limit cannot exceed 500 grams");
         }
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
-        return toDroneDTO(droneRepository.save(drone));
+        return DTOConverter.toDroneDTO(droneRepository.save(drone));
     }
 
-    /**
-     * Loads a drone with a specified medication.
-     *
-     * @param medicationDTO The medication to load onto the drone as DTO.
-     * @return The DroneMedicationDTO object representing the loaded medication.
-     * @throws DroneNotAvailableException if no drone is available for loading.
-     * @throws IllegalStateException      if battery level is below 25%, weight limit is exceeded,
-     *                                    or drone is not in a suitable state for loading.
-     */
+
     @Override
     @Transactional
     public DroneMedicationDTO loadDroneWithMedication(MedicationDTO medicationDTO) {
-        Medication medication = new Medication();
-        medication.setId(medicationDTO.getId());
-        medication.setName(medicationDTO.getName());
-        medication.setWeight(medicationDTO.getWeight());
-        medication.setCode(medicationDTO.getCode());
-        medication.setImageUrl(medicationDTO.getImageUrl());
+        Medication medication = new Medication(medicationDTO.getId(), medicationDTO.getName(), medicationDTO.getWeight(),
+                medicationDTO.getCode(), medicationDTO.getImageUrl());
 
         List<Drone> availableDrones = droneRepository.findByState(State.IDLE);
 
@@ -128,9 +59,9 @@ public class DroneServiceImpl implements DroneService {
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.get(0); // Get the first available drone
+        Drone drone = availableDrones.get(0);
 
-        validateLoadingConditions(drone, medication); // Refactored method used here
+        validateLoadingConditions(drone, medication);
 
         drone.setState(State.LOADING);
         droneRepository.save(drone);
@@ -138,88 +69,28 @@ public class DroneServiceImpl implements DroneService {
         DroneMedication droneMedication = new DroneMedication(drone, medication);
         droneMedicationRepository.save(droneMedication);
 
-        // Update state to LOADED if the drone is fully loaded
         drone.setState(State.LOADED);
         droneRepository.save(drone);
 
-        return toDroneMedicationDTO(droneMedication);
+        return DTOConverter.toDroneMedicationDTO(droneMedication);
     }
 
-    /**
-     * Validates the loading conditions for a drone.
-     *
-     * @param drone      The drone to validate.
-     * @param medication The medication to load onto the drone.
-     */
-    private void validateLoadingConditions(Drone drone, Medication medication) {
-        // Validate the battery level
-        validateBatteryLevel(drone.getBatteryCapacity());
-
-        // Validate the weight limit
-        int totalWeight = getTotalLoadedWeight(drone.getId());
-        if (totalWeight + medication.getWeight() > drone.getWeightLimit()) {
-            throw new OverweightException("Weight limit exceeded");
-        }
-
-        // Validate the drone state
-        if (!drone.getState().equals(State.IDLE) && !drone.getState().equals(State.LOADING)) {
-            throw new DroneNotAvailableException("Drone is not available for loading");
-        }
-    }
-    /**
-     * Instead of directly querying the battery level via BatteryLevelReader,
-     * I utilize the batteryCapacity attribute from the Drone entity. This approach
-     * relies on periodic updates performed by BatteryCheckServiceImpl to ensure
-     * the accuracy of the battery level information. This method reduces the overhead
-     * of frequent battery level checks and centralizes the battery status management
-     * within the BatteryCheckServiceImpl, promoting efficiency and consistency across
-     * the application.
-     *
-     * Validates the battery level of a drone.
-     *
-     * @param batteryCapacity The battery capacity to validate.
-     */
-    private void validateBatteryLevel(int batteryCapacity) {
-        if (batteryCapacity < MIN_BATTERY_LEVEL) {
-            throw new IllegalStateException("Battery level is below 25%");
-        }
-    }
-
-    /**
-     * Retrieves medications loaded onto a specific drone.
-     *
-     * @param droneId The ID of the drone to fetch medications for.
-     * @return List of MedicationDTO loaded onto the drone.
-     */
     @Override
-    @Retryable(maxAttempts = 3, retryFor = RuntimeException.class, backoff = @Backoff(delay = 2000))
     public List<MedicationDTO> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
                 .stream()
-                .map(droneMedication -> toMedicationDTO(droneMedication.getMedication()))
+                .map(dm -> DTOConverter.toMedicationDTO(dm.getMedication()))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Retrieves a list of available drones that are currently idle.
-     *
-     * @return List of available DroneDTO objects.
-     */
     @Override
     public List<DroneDTO> getAvailableDrones() {
         return droneRepository.findByState(State.IDLE)
                 .stream()
-                .map(this::toDroneDTO)
+                .map(DTOConverter::toDroneDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Checks the battery level of a specific drone.
-     *
-     * @param droneId The ID of the drone to check battery level for.
-     * @return Battery level percentage.
-     * @throws ResourceNotFoundException if the drone with the given ID is not found.
-     */
     @Override
     public int checkDroneBatteryLevel(Long droneId) {
         return droneRepository.findById(droneId)
@@ -227,12 +98,6 @@ public class DroneServiceImpl implements DroneService {
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
     }
 
-    /**
-     * Calculates the total weight of medications loaded onto a specific drone.
-     *
-     * @param droneId The ID of the drone to calculate loaded weight for.
-     * @return Total weight of medications loaded on the drone.
-     */
     @Override
     public int getTotalLoadedWeight(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
@@ -241,13 +106,8 @@ public class DroneServiceImpl implements DroneService {
                 .sum();
     }
 
-    /**
-     * Initiates delivery for a specific drone.
-     *
-     * @param droneId The ID of the drone to start delivery for.
-     * @throws IllegalStateException if the drone is not in a loaded state.
-     */
     @Override
+    @Transactional
     public void startDelivery(Long droneId) {
         Drone drone = droneRepository.findById(droneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
@@ -260,13 +120,8 @@ public class DroneServiceImpl implements DroneService {
         droneRepository.save(drone);
     }
 
-    /**
-     * Marks the delivery as complete for a specific drone.
-     *
-     * @param droneId The ID of the drone to complete delivery for.
-     * @throws IllegalStateException if the drone is not in a delivering state.
-     */
     @Override
+    @Transactional
     public void completeDelivery(Long droneId) {
         Drone drone = droneRepository.findById(droneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
@@ -279,13 +134,8 @@ public class DroneServiceImpl implements DroneService {
         droneRepository.save(drone);
     }
 
-    /**
-     * Returns a specific drone to its base.
-     *
-     * @param droneId The ID of the drone to return.
-     * @throws IllegalStateException if the drone is not in a delivered state.
-     */
     @Override
+    @Transactional
     public void returnToBase(Long droneId) {
         Drone drone = droneRepository.findById(droneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
@@ -297,17 +147,10 @@ public class DroneServiceImpl implements DroneService {
         drone.setState(State.RETURNING);
         droneRepository.save(drone);
 
-        // After returning
         drone.setState(State.IDLE);
         droneRepository.save(drone);
     }
 
-    /**
-     * Marks a specific drone as idle.
-     *
-     * @param id The ID of the drone to mark as idle.
-     * @return ResponseEntity indicating the result of the operation.
-     */
     @Override
     @Transactional
     public ResponseEntity<Object> markIdle(Long id) {
