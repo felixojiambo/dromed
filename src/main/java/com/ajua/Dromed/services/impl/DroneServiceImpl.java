@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DroneServiceImpl extends AbstractDroneService implements DroneService {
-
+    private static final int MAX_DRONE_COUNT = 10;
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
 
@@ -45,24 +45,27 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
-     * Registers a new drone.
+     * Registers a new drone if the maximum drone count has not been exceeded.
      *
-     * @param serialNumber The serial number of the drone.
-     * @param model The model of the drone.
-     * @param weightLimit The weight limit of the drone.
-     * @param batteryCapacity The battery capacity of the drone.
-     * @param state The initial state of the drone.
-     * @return The registered drone as a DroneDTO.
+     * @param serialNumber The serial number of the drone. It should be unique for each drone.
+     * @param model The model of the drone. This should be a valid Model enum value.
+     * @param weightLimit The weight limit of the drone in grams. It must be within the permissible range defined by the application.
+     * @param batteryCapacity The battery capacity of the drone as a percentage (0-100).
+     * @param state The initial state of the drone. This should be a valid State enum value.
+     * @return The registered drone as a DroneDTO containing the drone's details.
+     * @throws IllegalStateException if the maximum number of drones allowed is exceeded.
      */
     @Override
     @Transactional
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
-        if (weightLimit > MAX_WEIGHT_LIMIT) {
-            throw new IllegalArgumentException("Weight limit cannot exceed 500 grams");
+        if (droneRepository.count() >= MAX_DRONE_COUNT) {
+            throw new IllegalStateException("Cannot register more than " + MAX_DRONE_COUNT + " drones.");
         }
+
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
         return DTOConverter.toDroneDTO(droneRepository.save(drone));
     }
+
 
     /**
      * Loads a drone with medication.
@@ -82,7 +85,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.getFirst();
+        Drone drone = availableDrones.get(0); // Get the first available drone
 
         validateLoadingConditions(drone, medication);
 

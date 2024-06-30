@@ -11,7 +11,7 @@ import com.ajua.Dromed.models.Medication;
  * Provides common validation and utility methods for managing drones and their loading conditions.
  */
 public abstract class AbstractDroneService {
-    protected static final int MAX_WEIGHT_LIMIT = 500;
+    public static final int MAX_WEIGHT_LIMIT = 500;
     protected static final int MIN_BATTERY_LEVEL = 25;
 
     /**
