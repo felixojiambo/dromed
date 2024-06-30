@@ -15,12 +15,19 @@ import com.ajua.Dromed.repository.DroneRepository;
 import com.ajua.Dromed.services.interfaces.DroneService;
 import com.ajua.Dromed.services.patterns.DroneFactory;
 import com.ajua.Dromed.utils.DTOConverter;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -29,7 +36,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DroneServiceImpl extends AbstractDroneService implements DroneService {
-   // private static final int MAX_DRONE_COUNT = 10;
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
 
@@ -53,19 +59,34 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
      * @param batteryCapacity The battery capacity of the drone as a percentage (0-100).
      * @param state The initial state of the drone. This should be a valid State enum value.
      * @return The registered drone as a DroneDTO containing the drone's details.
-     * @throws IllegalStateException if the maximum number of drones allowed is exceeded.
      */
     @Override
     @Transactional
+    @Retry(name = "registerDrone", fallbackMethod = "registerDroneFallback")
+    @CircuitBreaker(name = "registerDrone", fallbackMethod = "registerDroneFallback")
+    @RateLimiter(name = "registerDrone", fallbackMethod = "registerDroneFallback")
+    @Bulkhead(name = "registerDrone", fallbackMethod = "registerDroneFallback")
+    @TimeLimiter(name = "default", fallbackMethod = "registerDroneFallback")
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
-//        if (droneRepository.count() >= MAX_DRONE_COUNT) {
-//            throw new IllegalStateException("Cannot register more than " + MAX_DRONE_COUNT + " drones.");
-//        }
-
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
-        return DTOConverter.toDroneDTO(droneRepository.save(drone));
+        droneRepository.save(drone);
+        return DTOConverter.toDroneDTO(drone);
     }
 
+    /**
+     * Fallback method for registerDrone in case of failure.
+     *
+     * @param serialNumber The serial number of the drone.
+     * @param model The model of the drone.
+     * @param weightLimit The weight limit of the drone.
+     * @param batteryCapacity The battery capacity of the drone.
+     * @param state The state of the drone.
+     * @param t The throwable that caused the fallback.
+     * @return A default DroneDTO.
+     */
+    public DroneDTO registerDroneFallback(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state, Throwable t) {
+        return new DroneDTO(0L, "defaultSerial", model, weightLimit, batteryCapacity, State.IDLE);
+    }
 
     /**
      * Loads a drone with medication.
@@ -75,6 +96,11 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
      */
     @Override
     @Transactional
+    @Retry(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
+    @CircuitBreaker(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
+    @RateLimiter(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
+    @Bulkhead(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
+    @TimeLimiter(name = "default", fallbackMethod = "loadDroneWithMedicationFallback")
     public DroneMedicationDTO loadDroneWithMedication(MedicationDTO medicationDTO) {
         Medication medication = new Medication(medicationDTO.getId(), medicationDTO.getName(), medicationDTO.getWeight(),
                 medicationDTO.getCode(), medicationDTO.getImageUrl());
@@ -85,7 +111,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.get(0); // Get the first available drone
+        Drone drone = availableDrones.getFirst();
 
         validateLoadingConditions(drone, medication);
 
@@ -102,12 +128,24 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
+     * Fallback method for loadDroneWithMedication in case of failure.
+     *
+     * @param medicationDTO The medication DTO.
+     * @param t The throwable that caused the fallback.
+     * @return A default DroneMedicationDTO.
+     */
+    public DroneMedicationDTO loadDroneWithMedicationFallback(MedicationDTO medicationDTO, Throwable t) {
+        return new DroneMedicationDTO();
+    }
+
+    /**
      * Gets the medications loaded on a specific drone.
      *
      * @param droneId The ID of the drone.
      * @return A list of MedicationDTOs loaded on the drone.
      */
     @Override
+    @Cacheable(cacheNames = "getAvailableDrones")
     public List<MedicationDTO> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
                 .stream()
@@ -121,6 +159,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
      * @return A list of available DroneDTOs.
      */
     @Override
+    @Cacheable(cacheNames = "getAvailableDrones")
     public List<DroneDTO> getAvailableDrones() {
         return droneRepository.findByState(State.IDLE)
                 .stream()
@@ -199,7 +238,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
-     * Returns a drone to base after delivery.
+     * Returns a specific drone to its base.
      *
      * @param droneId The ID of the drone.
      * @throws ResourceNotFoundException if the drone is not found.
@@ -223,10 +262,10 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
-     * Marks a drone as idle.
+     * Marks a drone as idle if it is returning to base.
      *
      * @param id The ID of the drone.
-     * @return A ResponseEntity indicating the result of the operation.
+     * @return ResponseEntity indicating the result of the operation.
      */
     @Override
     @Transactional
@@ -242,5 +281,4 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
-
 }
