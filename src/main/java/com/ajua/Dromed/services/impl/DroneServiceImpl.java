@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public class DroneServiceImpl extends AbstractDroneService implements DroneService {
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
-
+    // private static final int MAX_DRONE_COUNT = 10;
     /**
      * Constructor for DroneServiceImpl.
      *
@@ -51,7 +51,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
-     * Registers a new drone if the maximum drone count has not been exceeded.
+     * Registers a new drone .
      *
      * @param serialNumber The serial number of the drone. It should be unique for each drone.
      * @param model The model of the drone. This should be a valid Model enum value.
@@ -68,21 +68,18 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     @Bulkhead(name = "registerDrone", fallbackMethod = "registerDroneFallback")
     @TimeLimiter(name = "default", fallbackMethod = "registerDroneFallback")
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
+        //        if (droneRepository.count() >= MAX_DRONE_COUNT) {
+//            throw new IllegalStateException("Cannot register more than " + MAX_DRONE_COUNT + " drones.");
+//        }
+
+
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
-        droneRepository.save(drone);
-        return DTOConverter.toDroneDTO(drone);
+        return DTOConverter.toDroneDTO(droneRepository.save(drone));
     }
 
     /**
      * Fallback method for registerDrone in case of failure.
-     *
-     * @param serialNumber The serial number of the drone.
-     * @param model The model of the drone.
-     * @param weightLimit The weight limit of the drone.
-     * @param batteryCapacity The battery capacity of the drone.
-     * @param state The state of the drone.
-     * @param t The throwable that caused the fallback.
-     * @return A default DroneDTO.
+
      */
     public DroneDTO registerDroneFallback(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state, Throwable t) {
         return new DroneDTO(0L, "defaultSerial", model, weightLimit, batteryCapacity, State.IDLE);
@@ -129,10 +126,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
 
     /**
      * Fallback method for loadDroneWithMedication in case of failure.
-     *
-     * @param medicationDTO The medication DTO.
-     * @param t The throwable that caused the fallback.
-     * @return A default DroneMedicationDTO.
+
      */
     public DroneMedicationDTO loadDroneWithMedicationFallback(MedicationDTO medicationDTO, Throwable t) {
         return new DroneMedicationDTO();
