@@ -52,7 +52,7 @@ class DroneServiceImplTest {
     private Drone drone;
     private Medication medication;
     private DroneMedication droneMedication;
-    private static final int MAX_DRONE_COUNT = 10;
+    //private static final int MAX_DRONE_COUNT = 10;
     /**
      * Sets up test data before each test.
      */
@@ -85,7 +85,7 @@ class DroneServiceImplTest {
         when(droneRepository.save(any(Drone.class))).thenReturn(drone);
 
         // Mock the count method to return less than the maximum limit
-        when(droneRepository.count()).thenReturn(5L);
+       // when(droneRepository.count()).thenReturn(5L);
 
         // Call the service method
         DroneDTO droneDTO = droneService.registerDrone(drone.getSerialNumber(), drone.getModel(), drone.getWeightLimit(), drone.getBatteryCapacity(), drone.getState());
@@ -98,14 +98,14 @@ class DroneServiceImplTest {
         assertEquals(drone.getState(), droneDTO.getState());
     }
 
-    @Test
-    void testRegisterDroneThrowsIllegalStateException() {
-        // Mock the count method to return the maximum limit
-        when(droneRepository.count()).thenReturn(10L);
-
-        // Verify that the exception is thrown
-        assertThrows(IllegalStateException.class, () -> droneService.registerDrone(drone.getSerialNumber(), drone.getModel(), drone.getWeightLimit(), drone.getBatteryCapacity(), drone.getState()));
-    }
+//    @Test
+//    void testRegisterDroneThrowsIllegalStateException() {
+//        // Mock the count method to return the maximum limit
+//        when(droneRepository.count()).thenReturn(10L);
+//
+//        // Verify that the exception is thrown
+//        assertThrows(IllegalStateException.class, () -> droneService.registerDrone(drone.getSerialNumber(), drone.getModel(), drone.getWeightLimit(), drone.getBatteryCapacity(), drone.getState()));
+//    }
 
     /**
      * Tests the loadDroneWithMedication method.

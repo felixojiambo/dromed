@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DroneServiceImpl extends AbstractDroneService implements DroneService {
-    private static final int MAX_DRONE_COUNT = 10;
+   // private static final int MAX_DRONE_COUNT = 10;
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
 
@@ -58,9 +58,9 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     @Override
     @Transactional
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
-        if (droneRepository.count() >= MAX_DRONE_COUNT) {
-            throw new IllegalStateException("Cannot register more than " + MAX_DRONE_COUNT + " drones.");
-        }
+//        if (droneRepository.count() >= MAX_DRONE_COUNT) {
+//            throw new IllegalStateException("Cannot register more than " + MAX_DRONE_COUNT + " drones.");
+//        }
 
         Drone drone = DroneFactory.createDrone(serialNumber, model, weightLimit, batteryCapacity, state);
         return DTOConverter.toDroneDTO(droneRepository.save(drone));
