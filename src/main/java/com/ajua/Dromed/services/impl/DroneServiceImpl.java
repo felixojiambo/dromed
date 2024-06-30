@@ -23,17 +23,37 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for managing drones.
+ * Provides methods for registering, loading, and managing drones.
+ */
 @Service
 public class DroneServiceImpl extends AbstractDroneService implements DroneService {
 
     private final DroneRepository droneRepository;
     private final DroneMedicationRepository droneMedicationRepository;
 
+    /**
+     * Constructor for DroneServiceImpl.
+     *
+     * @param droneRepository The drone repository.
+     * @param droneMedicationRepository The drone medication repository.
+     */
     public DroneServiceImpl(DroneRepository droneRepository, DroneMedicationRepository droneMedicationRepository) {
         this.droneRepository = droneRepository;
         this.droneMedicationRepository = droneMedicationRepository;
     }
 
+    /**
+     * Registers a new drone.
+     *
+     * @param serialNumber The serial number of the drone.
+     * @param model The model of the drone.
+     * @param weightLimit The weight limit of the drone.
+     * @param batteryCapacity The battery capacity of the drone.
+     * @param state The initial state of the drone.
+     * @return The registered drone as a DroneDTO.
+     */
     @Override
     @Transactional
     public DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state) {
@@ -44,6 +64,12 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         return DTOConverter.toDroneDTO(droneRepository.save(drone));
     }
 
+    /**
+     * Loads a drone with medication.
+     *
+     * @param medicationDTO The medication DTO.
+     * @return The loaded drone medication as a DroneMedicationDTO.
+     */
     @Override
     @Transactional
     public DroneMedicationDTO loadDroneWithMedication(MedicationDTO medicationDTO) {
@@ -56,7 +82,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
             throw new DroneNotAvailableException("No available drones for loading");
         }
 
-        Drone drone = availableDrones.get(0);
+        Drone drone = availableDrones.getFirst();
 
         validateLoadingConditions(drone, medication);
 
@@ -72,6 +98,12 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         return DTOConverter.toDroneMedicationDTO(droneMedication);
     }
 
+    /**
+     * Gets the medications loaded on a specific drone.
+     *
+     * @param droneId The ID of the drone.
+     * @return A list of MedicationDTOs loaded on the drone.
+     */
     @Override
     public List<MedicationDTO> getMedicationsByDrone(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
@@ -80,6 +112,11 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets all available drones.
+     *
+     * @return A list of available DroneDTOs.
+     */
     @Override
     public List<DroneDTO> getAvailableDrones() {
         return droneRepository.findByState(State.IDLE)
@@ -88,6 +125,13 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Checks the battery level of a specific drone.
+     *
+     * @param droneId The ID of the drone.
+     * @return The battery level of the drone.
+     * @throws ResourceNotFoundException if the drone is not found.
+     */
     @Override
     public int checkDroneBatteryLevel(Long droneId) {
         return droneRepository.findById(droneId)
@@ -95,6 +139,12 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
     }
 
+    /**
+     * Gets the total loaded weight on a specific drone.
+     *
+     * @param droneId The ID of the drone.
+     * @return The total loaded weight.
+     */
     @Override
     public int getTotalLoadedWeight(Long droneId) {
         return droneMedicationRepository.findByDroneId(droneId)
@@ -103,6 +153,13 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 .sum();
     }
 
+    /**
+     * Starts the delivery process for a specific drone.
+     *
+     * @param droneId The ID of the drone.
+     * @throws ResourceNotFoundException if the drone is not found.
+     * @throws IllegalStateException if the drone is not ready for delivery.
+     */
     @Override
     @Transactional
     public void startDelivery(Long droneId) {
@@ -117,6 +174,13 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         droneRepository.save(drone);
     }
 
+    /**
+     * Completes the delivery process for a specific drone.
+     *
+     * @param droneId The ID of the drone.
+     * @throws ResourceNotFoundException if the drone is not found.
+     * @throws IllegalStateException if the drone is not delivering.
+     */
     @Override
     @Transactional
     public void completeDelivery(Long droneId) {
@@ -131,6 +195,13 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         droneRepository.save(drone);
     }
 
+    /**
+     * Returns a drone to base after delivery.
+     *
+     * @param droneId The ID of the drone.
+     * @throws ResourceNotFoundException if the drone is not found.
+     * @throws IllegalStateException if the drone is not in a state to return.
+     */
     @Override
     @Transactional
     public void returnToBase(Long droneId) {
@@ -148,6 +219,12 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
         droneRepository.save(drone);
     }
 
+    /**
+     * Marks a drone as idle.
+     *
+     * @param id The ID of the drone.
+     * @return A ResponseEntity indicating the result of the operation.
+     */
     @Override
     @Transactional
     public ResponseEntity<Object> markIdle(Long id) {
@@ -162,4 +239,5 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 }

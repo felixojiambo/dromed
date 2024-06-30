@@ -17,6 +17,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service implementation for checking and managing drone battery levels.
+ * Uses scheduled tasks to periodically check battery levels and notify observers.
+ */
 @Service
 public class BatteryCheckServiceImpl implements BatteryCheckService {
 
@@ -33,11 +37,20 @@ public class BatteryCheckServiceImpl implements BatteryCheckService {
 
     private final List<BatteryObserver> observers = new ArrayList<>();
 
+    /**
+     * Adds a BatteryObserver to the list of observers.
+     *
+     * @param observer The observer to add.
+     */
     @Override
     public void addObserver(BatteryObserver observer) {
         observers.add(observer);
     }
 
+    /**
+     * Checks the battery levels of all drones and notifies observers.
+     * This method is scheduled to run periodically.
+     */
     @Override
     @Scheduled(fixedRate = 60000) // runs every minute
     public void checkBatteryLevels() {
@@ -62,6 +75,9 @@ public class BatteryCheckServiceImpl implements BatteryCheckService {
         });
     }
 
+    /**
+     * Runs the battery level check immediately.
+     */
     @Override
     public void run() {
         checkBatteryLevels();
