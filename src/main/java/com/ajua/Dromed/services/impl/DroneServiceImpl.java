@@ -51,7 +51,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     }
 
     /**
-     * Registers a new drone if the maximum drone count has not been exceeded.
+     * Registers a new drone.
      *
      * @param serialNumber The serial number of the drone. It should be unique for each drone.
      * @param model The model of the drone. This should be a valid Model enum value.
