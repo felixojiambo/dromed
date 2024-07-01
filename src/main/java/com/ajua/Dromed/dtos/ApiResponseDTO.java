@@ -12,4 +12,3 @@ public class ApiResponseDTO<T> {
     private String message;
     private T data;
 }
-
