@@ -1,5 +1,7 @@
 package com.ajua.Dromed.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,8 @@ import com.ajua.Dromed.enums.State;
 
 @Component
 public class DataLoader implements CommandLineRunner {
+
+    private static final Logger logger = LoggerFactory.getLogger(DataLoader.class);
 
     @Autowired
     private DroneRepository droneRepository;
@@ -50,8 +54,7 @@ public class DataLoader implements CommandLineRunner {
             dm2.setMedication(med2);
             droneMedicationRepository.save(dm2);
         } catch (Exception e) {
-            System.err.println("Error loading initial data: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error loading initial data: {}", e.getMessage(), e);
         }
     }
 }
