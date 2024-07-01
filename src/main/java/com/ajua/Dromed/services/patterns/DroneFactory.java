@@ -8,7 +8,7 @@ import com.ajua.Dromed.services.impl.AbstractDroneService;
 public class DroneFactory {
 
     /**
-     * Creates and returns a new Drone object with the specified properties.
+     * Creates and returns a new Drone object using the Builder pattern.
      *
      * @param serialNumber The unique serial number of the drone.
      * @param model The model of the drone.
@@ -23,7 +23,13 @@ public class DroneFactory {
         validateBatteryCapacity(batteryCapacity);
         validateState(state);
 
-        return new Drone(null, serialNumber, model, weightLimit, batteryCapacity, state);
+        return new Drone.Builder()
+                .serialNumber(serialNumber)
+                .model(model)
+                .weightLimit(weightLimit)
+                .batteryCapacity(batteryCapacity)
+                .state(state)
+                .build();
     }
 
     private static void validateSerialNumber(String serialNumber) {

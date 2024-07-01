@@ -32,4 +32,47 @@ public class Drone {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private State state;
+
+    public static class Builder {
+        private Long id;
+        private String serialNumber;
+        private Model model;
+        private int weightLimit;
+        private int batteryCapacity;
+        private State state;
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder serialNumber(String serialNumber) {
+            this.serialNumber = serialNumber;
+            return this;
+        }
+
+        public Builder model(Model model) {
+            this.model = model;
+            return this;
+        }
+
+        public Builder weightLimit(int weightLimit) {
+            this.weightLimit = weightLimit;
+            return this;
+        }
+
+        public Builder batteryCapacity(int batteryCapacity) {
+            this.batteryCapacity = batteryCapacity;
+            return this;
+        }
+
+        public Builder state(State state) {
+            this.state = state;
+            return this;
+        }
+
+        public Drone build() {
+            return new Drone(id, serialNumber, model, weightLimit, batteryCapacity, state);
+        }
+    }
 }

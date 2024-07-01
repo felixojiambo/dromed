@@ -39,4 +39,41 @@ public class Medication {
     public int hashCode() {
         return Objects.hash(name);
     }
+
+    public static class Builder {
+        private Long id;
+        private String name;
+        private int weight;
+        private String code;
+        private String imageUrl;
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder weight(int weight) {
+            this.weight = weight;
+            return this;
+        }
+
+        public Builder code(String code) {
+            this.code = code;
+            return this;
+        }
+
+        public Builder imageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+            return this;
+        }
+
+        public Medication build() {
+            return new Medication(id, name, weight, code, imageUrl);
+        }
+    }
 }
