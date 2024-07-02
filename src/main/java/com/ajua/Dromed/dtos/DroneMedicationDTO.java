@@ -11,4 +11,7 @@ public class DroneMedicationDTO {
     private Long id;
     private DroneDTO drone;
     private MedicationDTO medication;
+
+    public DroneMedicationDTO(DroneDTO droneDTO, MedicationDTO medicationDTO) {
+    }
 }

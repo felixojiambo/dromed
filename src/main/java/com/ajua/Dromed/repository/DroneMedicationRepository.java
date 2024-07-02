@@ -7,5 +7,7 @@ import java.util.List;
 public interface DroneMedicationRepository extends JpaRepository<DroneMedication, Long> {
     List<DroneMedication> findByDroneId(Long droneId);
 
+    Object findByDrone(Drone drone);
+
     //ScopedValue<Object> findByDroneAndMedication(Drone drone, Medication medication);
 }
