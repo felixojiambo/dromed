@@ -2,75 +2,76 @@ package com.ajua.Dromed.services.impl;
 
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.exceptions.DroneNotAvailableException;
-import com.ajua.Dromed.exceptions.ResourceNotFoundException;
+import com.ajua.Dromed.exceptions.OverweightException;
 import com.ajua.Dromed.models.Drone;
-import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.models.Medication;
-import com.ajua.Dromed.repository.DroneRepository;
-import com.ajua.Dromed.repository.DroneMedicationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.List;
-import java.util.stream.Collectors;
+/**
+ * Abstract service class for drone-related operations.
+ * Provides common validation and utility methods for managing drones and their loading conditions.
+ */
 public abstract class AbstractDroneService {
     public static final int MAX_WEIGHT_LIMIT = 500;
+    protected static final int MIN_BATTERY_LEVEL = 25;
 
-    protected final DroneRepository droneRepository;
-    protected final DroneMedicationRepository droneMedicationRepository;
-
-    protected AbstractDroneService(DroneRepository droneRepository, DroneMedicationRepository droneMedicationRepository) {
-        this.droneRepository = droneRepository;
-        this.droneMedicationRepository = droneMedicationRepository;
-    }
-
-    protected void validateBatteryLevel(Drone drone) {
-        if (drone.getBatteryCapacity() < 25) {
-            throw new DroneNotAvailableException("Drone battery is too low to proceed");
-        }
-    }
-
-    protected void validateDroneState(Drone drone, State expectedState) {
-        if (!drone.getState().equals(expectedState)) {
-            throw new IllegalStateException("Drone is not in the expected state: " + expectedState);
-        }
-    }
-
-    protected void transitionDroneState(Drone drone, State newState) {
-        drone.setState(newState);
-        droneRepository.save(drone);
-    }
-
-    protected Drone getAvailableDrone() {
-        return droneRepository.findByState(State.IDLE)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new DroneNotAvailableException("No available drones for loading"));
-    }
-
-    protected Drone getDroneById(Long droneId) {
-        return droneRepository.findById(droneId)
-                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
-    }
-
+    /**
+     * Validates the loading conditions of a drone for a given medication.
+     *
+     * @param drone The drone to be validated.
+     * @param medication The medication to be loaded onto the drone.
+     * @throws OverweightException if the weight limit is exceeded.
+     * @throws DroneNotAvailableException if the drone is not available for loading.
+     */
     protected void validateLoadingConditions(Drone drone, Medication medication) {
-        validateBatteryLevel(drone);
+        validateBatteryLevel(drone.getBatteryCapacity());
+        validateMedication(medication);
+
         int totalWeight = getTotalLoadedWeight(drone.getId());
         if (totalWeight + medication.getWeight() > drone.getWeightLimit()) {
-            throw new DroneNotAvailableException("Drone cannot carry this weight");
+            throw new OverweightException("Weight limit exceeded");
+        }
+
+        if (!drone.getState().equals(State.IDLE) && !drone.getState().equals(State.LOADING)) {
+            throw new DroneNotAvailableException("Drone is not available for loading");
         }
     }
 
-    public int getTotalLoadedWeight(Long droneId) { // Kept public
-        return droneMedicationRepository.findByDroneId(droneId)
-                .stream()
-                .mapToInt(dm -> dm.getMedication().getWeight())
-                .sum();
+    /**
+     * Validates the battery level of a drone.
+     *
+     * @param batteryCapacity The current battery capacity of the drone.
+     * @throws IllegalStateException if the battery level is below the minimum required.
+     */
+    protected void validateBatteryLevel(int batteryCapacity) {
+        if (batteryCapacity < MIN_BATTERY_LEVEL) {
+            throw new IllegalStateException("Battery level is below 25%");
+        }
     }
 
-    protected List<Medication> findMedicationsByDrone(Long droneId) { // Method renamed
-        return droneMedicationRepository.findByDroneId(droneId)
-                .stream()
-                .map(DroneMedication::getMedication)
-                .collect(Collectors.toList());
+    /**
+     * Validates the properties of a medication.
+     *
+     * @param medication The medication to be validated.
+     * @throws IllegalArgumentException if the medication's name or code contains invalid characters.
+     */
+    protected void validateMedication(Medication medication) {
+        String namePattern = "^[a-zA-Z0-9-_]+$";
+        String codePattern = "^[A-Z0-9_]+$";
+
+        if (!medication.getName().matches(namePattern)) {
+            throw new IllegalArgumentException("Medication name contains invalid characters");
+        }
+        if (!medication.getCode().matches(codePattern)) {
+            throw new IllegalArgumentException("Medication code contains invalid characters");
+        }
     }
+
+    /**
+     * Gets the total weight of medications loaded on a drone.
+     * Must be implemented by subclasses.
+     *
+     * @param droneId The ID of the drone.
+     * @return The total weight of medications loaded on the drone.
+     */
+    protected abstract int getTotalLoadedWeight(Long droneId);
 }

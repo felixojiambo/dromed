@@ -5,6 +5,7 @@ import com.ajua.Dromed.dtos.DroneMedicationDTO;
 import com.ajua.Dromed.dtos.MedicationDTO;
 import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
+import com.ajua.Dromed.exceptions.*;
 import com.ajua.Dromed.models.Drone;
 import com.ajua.Dromed.models.DroneMedication;
 import com.ajua.Dromed.models.Medication;
@@ -27,6 +28,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -35,6 +37,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Test class for DroneServiceImpl.
+ * Uses Mockito for mocking dependencies and JUnit for testing.
+ */
 @ExtendWith(MockitoExtension.class)
 class DroneServiceImplTest {
 
@@ -73,132 +79,209 @@ class DroneServiceImplTest {
 
         droneMedication = new DroneMedication(drone, medication);
 
+        // Configure CircuitBreaker
         CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
                 .failureRateThreshold(50)
                 .waitDurationInOpenState(Duration.ofMillis(1000))
+                .permittedNumberOfCallsInHalfOpenState(2)
+                .slidingWindowSize(5)
                 .build();
-        circuitBreaker = CircuitBreaker.of("droneService", circuitBreakerConfig);
+        circuitBreaker = CircuitBreaker.of("testCircuitBreaker", circuitBreakerConfig);
 
+        // Configure Retry
         RetryConfig retryConfig = RetryConfig.custom()
                 .maxAttempts(3)
                 .waitDuration(Duration.ofMillis(500))
                 .build();
-        retry = Retry.of("droneService", retryConfig);
+        retry = Retry.of("testRetry", retryConfig);
     }
 
+    /**
+     * Tests the registerDrone method.
+     */
     @Test
     void testRegisterDrone() {
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
+        // Mock the save method of droneRepository with CircuitBreaker
+        when(droneRepository.save(any(Drone.class)))
+                .thenReturn(drone)
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(drone)
+                .thenReturn(drone)
+                .thenReturn(drone);
 
-        Callable<DroneDTO> registerDroneCallable = CircuitBreaker.decorateCallable(circuitBreaker,
-                () -> Retry.decorateCallable(retry,
-                        () -> droneService.registerDrone(drone.getSerialNumber(), drone.getModel(), drone.getWeightLimit(),
-                                drone.getBatteryCapacity(), drone.getState())).call()
-        );
+        // Use the Retry mechanism with CircuitBreaker for registerDrone method
+        Callable<DroneDTO> callable = CircuitBreaker.decorateCallable(circuitBreaker, () -> retry.executeCallable(() ->
+                droneService.registerDrone(drone.getSerialNumber(), drone.getModel(), drone.getWeightLimit(), drone.getBatteryCapacity(), drone.getState())));
 
-        DroneDTO result = Try.ofCallable(registerDroneCallable).getOrElse(new DroneDTO(0L, "defaultSerial", Model.LIGHTWEIGHT, 400, 50, State.IDLE));
+        // Call the service method
+        DroneDTO droneDTO = Try.ofCallable(callable)
+                .recover(ResourceNotFoundException.class, ex -> { throw new ResourceNotFoundException("Resource not found"); })
+                .recover(RuntimeException.class, ex -> { throw new DroneServiceException("Service unavailable"); })
+                .get();
 
-        assertNotNull(result);
-        assertEquals(drone.getSerialNumber(), result.getSerialNumber());
+        // Verify the results
+        assertEquals(drone.getSerialNumber(), droneDTO.getSerialNumber());
+        assertEquals(drone.getModel(), droneDTO.getModel());
+        assertEquals(drone.getWeightLimit(), droneDTO.getWeightLimit());
+        assertEquals(drone.getBatteryCapacity(), droneDTO.getBatteryCapacity());
+        assertEquals(drone.getState(), droneDTO.getState());
     }
 
+    /**
+     * Tests the loadDroneWithMedication method.
+     */
     @Test
     void testLoadDroneWithMedication() {
-        when(droneRepository.findAll()).thenReturn(List.of(drone));
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
-        when(droneMedicationRepository.save(any(DroneMedication.class))).thenReturn(droneMedication);
+        // Mock the necessary repository methods with CircuitBreaker
+        when(droneRepository.findByState(State.IDLE))
+                .thenReturn(List.of(drone))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(List.of(drone));
 
-        MedicationDTO medicationDTO = new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl());
+        // Mock the save method of droneMedicationRepository with Retry
+        when(droneMedicationRepository.save(any(DroneMedication.class)))
+                .thenReturn(droneMedication)
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(droneMedication);
 
-        Callable<DroneMedicationDTO> loadDroneCallable = CircuitBreaker.decorateCallable(circuitBreaker,
-                () -> Retry.decorateCallable(retry,
-                        () -> droneService.loadDroneWithMedication(medicationDTO)).call()
-        );
+        // Use the Retry mechanism with CircuitBreaker for loadDroneWithMedication method
+        Callable<DroneMedicationDTO> callable = CircuitBreaker.decorateCallable(circuitBreaker, () -> retry.executeCallable(() ->
+                droneService.loadDroneWithMedication(drone.getId(), new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl()))));
 
-        DroneMedicationDTO result;
-        result = Try.ofCallable(loadDroneCallable).getOrElse(new DroneMedicationDTO(new DroneDTO(), new MedicationDTO()));
+        // Call the service method
+        DroneMedicationDTO result = Try.ofCallable(callable)
+                .recover(ResourceNotFoundException.class, ex -> { throw new ResourceNotFoundException("Resource not found"); })
+                .recover(RuntimeException.class, ex -> { throw new DroneServiceException("Service unavailable"); })
+                .get();
 
+        // Verify the results
         assertNotNull(result);
-        assertNotNull(result.getMedication());
-        assertEquals(medication.getName(), result.getMedication().getName());
+        assertEquals(medication.getId(), result.getMedication().getId());
+        assertEquals(drone.getId(), result.getDrone().getId());
     }
 
+    /**
+     * Tests that loadDroneWithMedication throws DroneNotAvailableException when no drone is available.
+     */
     @Test
-    void testGetMedicationsByDrone() {
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
-        when(droneMedicationRepository.findByDrone(drone)).thenReturn(List.of(droneMedication));
+    void testLoadDroneWithMedicationThrowsDroneNotAvailableException() {
+        // Mock the repository method to return an empty list with CircuitBreaker
+        when(droneRepository.findByState(State.IDLE))
+                .thenReturn(new ArrayList<>())
+                .thenThrow(new RuntimeException("Database unavailable"));
 
-        List<MedicationDTO> result = droneService.getMedicationsByDrone(1L);
-
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-        assertEquals(medication.getName(), result.getFirst().getName());
+        // Use the CircuitBreaker for loadDroneWithMedication method directly
+        assertThrows(DroneNotAvailableException.class, () ->
+                CircuitBreaker.decorateCallable(circuitBreaker, () ->
+                        droneService.loadDroneWithMedication(drone.getId(), new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl()))).call());
     }
 
+    /**
+     * Tests that loadDroneWithMedication throws OverweightException when the medication exceeds the drone's weight limit.
+     */
     @Test
-    void testGetAvailableDrones() {
-        List<Drone> drones = List.of(drone);
+    void testLoadDroneWithMedicationThrowsOverweightException() {
+        // Set the drone's weight limit to a value less than the medication weight
+        drone.setWeightLimit(50);
 
-        when(droneRepository.findByState(State.IDLE)).thenReturn(drones);
+        // Mock the repository method to return the drone with CircuitBreaker
+        when(droneRepository.findByState(State.IDLE))
+                .thenReturn(List.of(drone))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(List.of(drone));
 
-        List<DroneDTO> result = droneService.getAvailableDrones();
-
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-        assertEquals(drone.getSerialNumber(), result.getFirst().getSerialNumber());
+        // Use the CircuitBreaker for loadDroneWithMedication method directly
+        assertThrows(OverweightException.class, () ->
+                CircuitBreaker.decorateCallable(circuitBreaker, () ->
+                        droneService.loadDroneWithMedication(drone.getId(), new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl()))).call());
     }
 
+    /**
+     * Tests the getMedicationsByDrone method.
+     */
     @Test
-    void testCheckDroneBatteryLevel() {
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
+    void testGetMedicationsByDrone() throws Exception {
+        // Mock the repository method to return the drone medication with CircuitBreaker
+        when(droneMedicationRepository.findByDroneId(drone.getId()))
+                .thenReturn(List.of(droneMedication))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(List.of(droneMedication));
 
-        int result = droneService.checkDroneBatteryLevel(1L);
+        // Use the CircuitBreaker for getMedicationsByDrone method directly
+        List<MedicationDTO> result = CircuitBreaker.decorateCallable(circuitBreaker, () ->
+                droneService.getMedicationsByDrone(drone.getId())).call();
 
-        assertEquals(drone.getBatteryCapacity(), result);
+        // Verify the results
+        assertEquals(1, result.size());
+        assertEquals(medication.getId(), result.get(0).getId());
     }
 
+    /**
+     * Tests the getAvailableDrones method.
+     */
     @Test
-    void testStartDelivery() {
-        drone.setState(State.LOADED);
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
+    void testGetAvailableDrones() throws Exception {
+        // Mock the repository method to return the drone with CircuitBreaker
+        when(droneRepository.findByState(State.IDLE))
+                .thenReturn(List.of(drone))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(List.of(drone));
 
-        droneService.startDelivery(1L);
+        // Use the CircuitBreaker for getAvailableDrones method directly
+        List<DroneDTO> result = CircuitBreaker.decorateCallable(circuitBreaker, () ->
+                droneService.getAvailableDrones(State.IDLE)).call();
 
-        assertEquals(State.DELIVERING, drone.getState());
+        // Verify the results
+        assertEquals(1, result.size());
+        assertEquals(drone.getId(), result.get(0).getId());
     }
 
+    /**
+     * Tests the checkBatteryLevel method.
+     */
     @Test
-    void testCompleteDelivery() {
-        drone.setState(State.DELIVERING);
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
+    void testCheckBatteryLevel() throws Exception {
+        // Mock the repository method to return the drone with CircuitBreaker
+        when(droneRepository.findById(drone.getId()))
+                .thenReturn(Optional.of(drone))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(Optional.of(drone));
 
-        droneService.completeDelivery(1L);
+        // Use the CircuitBreaker for checkBatteryLevel method directly
+        Callable<Integer> callable = CircuitBreaker.decorateCallable(circuitBreaker, () -> droneService.checkDroneBatteryLevel(drone.getId()));
 
-        assertEquals(State.DELIVERED, drone.getState());
+        // Verify the results
+        int batteryLevel = Try.ofCallable(callable)
+                .recover(RuntimeException.class, ex -> 0)
+                .get();
+
+        assertEquals(drone.getBatteryCapacity(), batteryLevel);
     }
 
+    /**
+     * Tests the updateDroneState method.
+     */
     @Test
-    void testReturnToBase() {
-        drone.setState(State.DELIVERED);
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
+    void testUpdateDroneState() throws Exception {
+        // Mock the repository method to return the drone with CircuitBreaker
+        when(droneRepository.findById(drone.getId()))
+                .thenReturn(Optional.of(drone))
+                .thenThrow(new RuntimeException("Database unavailable"))
+                .thenReturn(Optional.of(drone));
 
-        droneService.returnToBase(1L);
+        // Use the CircuitBreaker for updateDroneState method directly
+        Callable<ResponseEntity<Void>> callable = CircuitBreaker.decorateCallable(circuitBreaker, () -> {
+            droneService.updateDroneState(drone.getId(), State.LOADING);
+            return new ResponseEntity<Void>(HttpStatus.OK);
+        });
 
-        assertEquals(State.IDLE, drone.getState());
+        // Verify the results
+        ResponseEntity<Void> response = Try.ofCallable(callable)
+                .recover(RuntimeException.class, ex -> new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE))
+                .get();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(State.LOADING, drone.getState());
     }
 
-    @Test
-    void testMarkIdle() {
-        drone.setState(State.RETURNING);
-        when(droneRepository.findById(1L)).thenReturn(Optional.of(drone));
-        when(droneRepository.save(any(Drone.class))).thenReturn(drone);
-
-        ResponseEntity<Object> result = droneService.markIdle(1L);
-
-        assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(State.IDLE, drone.getState());
-    }
 }

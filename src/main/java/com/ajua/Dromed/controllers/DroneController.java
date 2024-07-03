@@ -24,7 +24,7 @@ public class DroneController {
     @Autowired
     private DroneService droneService;
 
-    @PostMapping("/register")
+    @PostMapping
     @Operation(
             summary = "Register a new drone",
             responses = {
@@ -34,32 +34,29 @@ public class DroneController {
             }
     )
     public ResponseEntity<ApiResponseWithDrone> registerDrone(
-            @RequestParam String serialNumber,
-            @RequestParam Model model,
-            @RequestParam int weightLimit,
-            @RequestParam int batteryCapacity,
-            @RequestParam State state) {
-        DroneDTO droneDTO = droneService.registerDrone(serialNumber, model, weightLimit, batteryCapacity, state);
+            @RequestBody DroneDTO droneRegisterDTO) {
+        DroneDTO droneDTO = droneService.registerDrone(droneRegisterDTO.getSerialNumber(), droneRegisterDTO.getModel(),
+                droneRegisterDTO.getWeightLimit(), droneRegisterDTO.getBatteryCapacity(), droneRegisterDTO.getState());
         ApiResponseWithDrone response = new ApiResponseWithDrone(true, "Drone registered successfully", droneDTO);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @PostMapping("/{id}/mark-idle")
+    @PatchMapping("/{id}/state")
     @Operation(
-            summary = "Mark a drone as idle",
+            summary = "Update drone state",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Drone marked as idle successfully"),
+                    @ApiResponse(responseCode = "200", description = "Drone state updated successfully"),
                     @ApiResponse(responseCode = "404", description = "Drone not found"),
-                    @ApiResponse(responseCode = "409", description = "Drone is not in the returning state")
+                    @ApiResponse(responseCode = "409", description = "Invalid drone state transition")
             }
     )
-    public ResponseEntity<ApiResponseSuccess> markIdle(@PathVariable Long id) {
-        droneService.markIdle(id);
-        ApiResponseSuccess response = new ApiResponseSuccess(true, "Drone marked as idle successfully");
+    public ResponseEntity<ApiResponseSuccess> updateDroneState(@PathVariable Long id, @RequestBody DroneDTO droneStateDTO) {
+        droneService.updateDroneState(id, droneStateDTO.getState());
+        ApiResponseSuccess response = new ApiResponseSuccess(true, "Drone state updated successfully");
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/load-medication")
+    @PostMapping("/{id}/medications")
     @Operation(
             summary = "Load a drone with medication",
             responses = {
@@ -68,14 +65,13 @@ public class DroneController {
                     @ApiResponse(responseCode = "400", description = "Invalid input or weight limit exceeded")
             }
     )
-    public ResponseEntity<ApiResponseWithDroneMedication> loadDroneWithMedication(
-            @RequestBody MedicationDTO medicationDTO) {
-        DroneMedicationDTO droneMedicationDTO = droneService.loadDroneWithMedication(medicationDTO);
+    public ResponseEntity<ApiResponseWithDroneMedication> loadDroneWithMedication(@PathVariable Long id, @RequestBody MedicationDTO medicationDTO) {
+        DroneMedicationDTO droneMedicationDTO = droneService.loadDroneWithMedication(id, medicationDTO);
         ApiResponseWithDroneMedication response = new ApiResponseWithDroneMedication(true, "Medication loaded successfully", droneMedicationDTO);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping("/available")
+    @GetMapping
     @Operation(
             summary = "Get available drones",
             responses = {
@@ -83,8 +79,8 @@ public class DroneController {
                             content = @Content(schema = @Schema(implementation = ApiResponseWithDrones.class))),
             }
     )
-    public ResponseEntity<ApiResponseWithDrones> getAvailableDrones() {
-        List<DroneDTO> availableDrones = droneService.getAvailableDrones();
+    public ResponseEntity<ApiResponseWithDrones> getAvailableDrones(@RequestParam(required = false) State state) {
+        List<DroneDTO> availableDrones = droneService.getAvailableDrones(state);
         ApiResponseWithDrones response = new ApiResponseWithDrones(true, "List of available drones", availableDrones);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -119,48 +115,46 @@ public class DroneController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/{droneId}/start-delivery")
+    @PostMapping("/{droneId}/deliveries")
     @Operation(
-            summary = "Start delivery for a drone",
+            summary = "Start or complete delivery for a drone",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Delivery started successfully"),
+                    @ApiResponse(responseCode = "202", description = "Delivery process started",
+                            content = @Content(schema = @Schema(implementation = ApiResponseSuccess.class))),
+                    @ApiResponse(responseCode = "200", description = "Delivery completed successfully",
+                            content = @Content(schema = @Schema(implementation = ApiResponseSuccess.class))),
                     @ApiResponse(responseCode = "404", description = "Drone not found"),
-                    @ApiResponse(responseCode = "400", description = "Drone is not ready for delivery")
+                    @ApiResponse(responseCode = "400", description = "Invalid delivery state transition")
             }
     )
-    public ResponseEntity<ApiResponseSuccess> startDelivery(@PathVariable Long droneId) {
-        droneService.startDelivery(droneId);
-        ApiResponseSuccess response = new ApiResponseSuccess(true, "Delivery started successfully");
-        return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
-    @PostMapping("/{droneId}/complete-delivery")
-    @Operation(
-            summary = "Complete delivery for a drone",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Delivery completed successfully"),
-                    @ApiResponse(responseCode = "404", description = "Drone not found"),
-                    @ApiResponse(responseCode = "400", description = "Drone is not delivering")
-            }
-    )
-    public ResponseEntity<ApiResponseSuccess> completeDelivery(@PathVariable Long droneId) {
-        droneService.completeDelivery(droneId);
-        ApiResponseSuccess response = new ApiResponseSuccess(true, "Delivery completed successfully");
-        return new ResponseEntity<>(response, HttpStatus.OK);
+    public ResponseEntity<ApiResponseSuccess> handleDelivery(@PathVariable Long droneId, @RequestParam String action) {
+        if ("start".equals(action)) {
+            droneService.startDelivery(droneId);
+            ApiResponseSuccess response = new ApiResponseSuccess(true, "Delivery process started");
+            return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+        } else if ("complete".equals(action)) {
+            droneService.completeDelivery(droneId);
+            ApiResponseSuccess response = new ApiResponseSuccess(true, "Delivery completed successfully");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            ApiResponseSuccess response = new ApiResponseSuccess(false, "Invalid action");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
     }
 
     @PostMapping("/{droneId}/return-to-base")
     @Operation(
             summary = "Return a drone to base",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Drone returned to base successfully"),
+                    @ApiResponse(responseCode = "202", description = "Drone return process started",
+                            content = @Content(schema = @Schema(implementation = ApiResponseSuccess.class))),
                     @ApiResponse(responseCode = "404", description = "Drone not found"),
                     @ApiResponse(responseCode = "400", description = "Drone is not in a state to return")
             }
     )
     public ResponseEntity<ApiResponseSuccess> returnToBase(@PathVariable Long droneId) {
         droneService.returnToBase(droneId);
-        ApiResponseSuccess response = new ApiResponseSuccess(true, "Drone returned to base successfully");
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        ApiResponseSuccess response = new ApiResponseSuccess(true, "Drone return process started");
+        return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
     }
 }
