@@ -82,7 +82,7 @@ public class DroneController {
         ApiResponseWithDrones response = new ApiResponseWithDrones(true, "List of available drones", availableDrones);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-
+//
     @GetMapping("/{droneId}/battery-level")
     @Operation(
             summary = "Check drone battery level",
