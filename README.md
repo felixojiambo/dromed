@@ -9,15 +9,13 @@ This is a Spring Boot application that manages drones for delivering medications
 - [Testing](#testing)
 - [REST API Endpoints](#rest-api-endpoints)
   - [Register a Drone](#register-a-drone)
-  - [Mark Drone as Idle](#mark-drone-as-idle)
+  - [Update Drone State](#update-drone-state)
   - [Load Drone with Medication](#load-drone-with-medication)
   - [Get Available Drones](#get-available-drones)
   - [Check Drone Battery Level](#check-drone-battery-level)
   - [Get Medications by Drone](#get-medications-by-drone)
-  - [Start Delivery](#start-delivery)
-  - [Complete Delivery](#complete-delivery)
+  - [Start or Complete Delivery](#start-or-complete-delivery)
   - [Return to Base](#return-to-base)
-  - [Battery Monitoring](#battery-monitoring)
 - [Notes](#notes)
 
 ## Requirements
@@ -63,14 +61,18 @@ The application will be accessible at `http://localhost:8080`.
 
 ### Register a Drone
 
-- **URL:** `/api/v1/drones/register`
+- **URL:** `/api/v1/drones`
 - **Method:** `POST`
-- **Request Parameters:**
-    - `serialNumber`
-    - `model`
-    - `weightLimit`
-    - `batteryCapacity`
-    - `state`
+- **Request Body:**
+    ```json
+    {
+        "serialNumber": "SN123",
+        "model": "LIGHTWEIGHT",
+        "weightLimit": 200,
+        "batteryCapacity": 80,
+        "state": "IDLE"
+    }
+    ```
 - **Response:**
     ```json
     {
@@ -87,22 +89,28 @@ The application will be accessible at `http://localhost:8080`.
     ```
 - **Purpose:** Registers a new drone in the system with the specified details.
 
-### Mark Drone as Idle
+### Update Drone State
 
-- **URL:** `/api/v1/drones/{id}/mark-idle`
-- **Method:** `POST`
+- **URL:** `/api/v1/drones/{id}/state`
+- **Method:** `PATCH`
+- **Request Body:**
+    ```json
+    {
+        "state": "IDLE"
+    }
+    ```
 - **Response:**
     ```json
     {
         "success": true,
-        "message": "Drone marked as idle successfully"
+        "message": "Drone state updated successfully"
     }
     ```
-- **Purpose:** Marks a drone as idle after it has returned to base.
+- **Purpose:** Updates the state of a drone (e.g., from `LOADING` to `IDLE`).
 
 ### Load Drone with Medication
 
-- **URL:** `/api/v1/drones/load-medication`
+- **URL:** `/api/v1/drones/{id}/medications`
 - **Method:** `POST`
 - **Request Body:**
     ```json
@@ -141,8 +149,10 @@ The application will be accessible at `http://localhost:8080`.
 
 ### Get Available Drones
 
-- **URL:** `/api/v1/drones/available`
+- **URL:** `/api/v1/drones`
 - **Method:** `GET`
+- **Request Parameters:**
+    - `state` (optional): Filter drones by state (e.g., `IDLE`, `LOADING`)
 - **Response:**
     ```json
     {
@@ -213,31 +223,27 @@ The application will be accessible at `http://localhost:8080`.
     ```
 - **Purpose:** Retrieves a list of medications loaded onto the specified drone.
 
-### Start Delivery
+### Start or Complete Delivery
 
-- **URL:** `/api/v1/drones/{droneId}/start-delivery`
+- **URL:** `/api/v1/drones/{droneId}/deliveries`
 - **Method:** `POST`
+- **Request Parameters:**
+    - `action` (required): Either `start` or `complete`
 - **Response:**
     ```json
     {
         "success": true,
-        "message": "Delivery started successfully"
+        "message": "Delivery process started"
     }
     ```
-- **Purpose:** Marks the specified drone as starting a delivery.
-
-### Complete Delivery
-
-- **URL:** `/api/v1/drones/{droneId}/complete-delivery`
-- **Method:** `POST`
-- **Response:**
+    or
     ```json
     {
         "success": true,
         "message": "Delivery completed successfully"
     }
     ```
-- **Purpose:** Marks the specified drone as having completed its delivery.
+- **Purpose:** Marks the specified drone as starting or completing a delivery.
 
 ### Return to Base
 
@@ -247,16 +253,10 @@ The application will be accessible at `http://localhost:8080`.
     ```json
     {
         "success": true,
-        "message": "Drone returned to base successfully"
+        "message": "Drone return process started"
     }
     ```
 - **Purpose:** Marks the specified drone as returning to the base after completing its tasks.
-
-### Battery Monitoring
-
-- **Battery Check Service:** The application includes a battery monitoring service that periodically checks the battery levels of all drones.
-- **Logging:** Battery levels are logged to help monitor battery usage and identify when drones need recharging.
-- **Purpose:** Ensures that the drones' battery levels are constantly monitored and logged for optimal operation and maintenance.
 
 ## Notes
 
