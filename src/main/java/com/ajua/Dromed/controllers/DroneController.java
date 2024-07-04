@@ -1,7 +1,7 @@
 package com.ajua.Dromed.controllers;
 
 import com.ajua.Dromed.dtos.*;
-import com.ajua.Dromed.enums.Model;
+//import com.ajua.Dromed.enums.Model;
 import com.ajua.Dromed.enums.State;
 import com.ajua.Dromed.services.interfaces.DroneService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,10 +50,8 @@ public class DroneController {
                     @ApiResponse(responseCode = "409", description = "Invalid drone state transition")
             }
     )
-    public ResponseEntity<ApiResponseSuccess> updateDroneState(@PathVariable Long id, @RequestBody DroneDTO droneStateDTO) {
-        droneService.updateDroneState(id, droneStateDTO.getState());
-        ApiResponseSuccess response = new ApiResponseSuccess(true, "Drone state updated successfully");
-        return new ResponseEntity<>(response, HttpStatus.OK);
+    public ResponseEntity<Object> updateDroneState(@PathVariable Long id, @RequestBody DroneStateDTO droneStateDTO) {
+        return droneService.updateDroneState(id, droneStateDTO.getState());
     }
 
     @PostMapping("/{id}/medications")
@@ -73,9 +71,9 @@ public class DroneController {
 
     @GetMapping
     @Operation(
-            summary = "Get available drones",
+            summary = "Get all drones or select based on drone state",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "List of available drones",
+                    @ApiResponse(responseCode = "200", description = "List of drones",
                             content = @Content(schema = @Schema(implementation = ApiResponseWithDrones.class))),
             }
     )

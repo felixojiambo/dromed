@@ -153,6 +153,7 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
      *
      * @return A list of available DroneDTOs.
      */
+
     @Override
     @Cacheable(cacheNames = "getAvailableDrones")
     public List<DroneDTO> getAvailableDrones(State state) {
@@ -161,7 +162,6 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
                 .map(DTOConverter::toDroneDTO)
                 .collect(Collectors.toList());
     }
-
     /**
      * Checks the battery level of a specific drone.
      *
@@ -259,28 +259,21 @@ public class DroneServiceImpl extends AbstractDroneService implements DroneServi
     /**
      * Marks a drone as idle if it is returning to base.
      *
-     * @param id The ID of the drone.
+     * @param droneId The ID of the drone.
      * @return ResponseEntity indicating the result of the operation.
      */
-    @Override
     @Transactional
-    public ResponseEntity<Object> markIdle(Long id) {
-        return droneRepository.findById(id)
+    public ResponseEntity<Object> updateDroneState(Long droneId, State state) {
+        return droneRepository.findById(droneId)
                 .map(drone -> {
-                    if (drone.getState() == State.RETURNING) {
-                        drone.setState(State.IDLE);
-                        droneRepository.save(drone);
-                        return ResponseEntity.ok().build();
+                    if (state == State.IDLE && drone.getState() != State.RETURNING) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT).build();
                     }
-                    return ResponseEntity.status(HttpStatus.CONFLICT).build();
+                    drone.setState(state);
+                    droneRepository.save(drone);
+                    return ResponseEntity.ok().build();
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
-    @Transactional
-    public void updateDroneState(Long droneId, State state) {
-        Drone drone = droneRepository.findById(droneId)
-                .orElseThrow(() -> new ResourceNotFoundException("Drone not found"));
-        drone.setState(state);
-        droneRepository.save(drone);
-    }
+
 }

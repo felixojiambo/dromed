@@ -18,25 +18,13 @@ import java.util.List;
 
 public interface DroneService {
 
-
-    @Transactional
-    @Retry(name = "registerDrone", fallbackMethod = "registerDroneFallback")
-    @CircuitBreaker(name = "registerDrone", fallbackMethod = "registerDroneFallback")
-    @RateLimiter(name = "registerDrone", fallbackMethod = "registerDroneFallback")
-    @Bulkhead(name = "registerDrone", fallbackMethod = "registerDroneFallback")
-    @TimeLimiter(name = "default", fallbackMethod = "registerDroneFallback")
     DroneDTO registerDrone(String serialNumber, Model model, int weightLimit, int batteryCapacity, State state);
-
-    @Transactional
-    @Retry(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
-    @CircuitBreaker(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
-    @RateLimiter(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
-    @Bulkhead(name = "loadDroneWithMedication", fallbackMethod = "loadDroneWithMedicationFallback")
-    @TimeLimiter(name = "default", fallbackMethod = "loadDroneWithMedicationFallback")
     DroneMedicationDTO loadDroneWithMedication(Long id, MedicationDTO medicationDTO);
 
     @Cacheable(cacheNames = "getAvailableDrones")
     List<MedicationDTO> getMedicationsByDrone(Long droneId);
+
+
 
     @Cacheable(cacheNames = "getAvailableDrones")
     List<DroneDTO> getAvailableDrones(State state);
@@ -52,8 +40,5 @@ public interface DroneService {
     @Transactional
     void returnToBase(Long droneId);
 
-    @Transactional
-    ResponseEntity<Object> markIdle(Long id);
-
-    void updateDroneState(Long id, State state);
+    ResponseEntity<Object> updateDroneState(Long id, State state);
 }

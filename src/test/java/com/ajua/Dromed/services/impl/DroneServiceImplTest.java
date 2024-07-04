@@ -37,10 +37,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * Test class for DroneServiceImpl.
- * Uses Mockito for mocking dependencies and JUnit for testing.
- */
 @ExtendWith(MockitoExtension.class)
 class DroneServiceImplTest {
 
@@ -96,9 +92,6 @@ class DroneServiceImplTest {
         retry = Retry.of("testRetry", retryConfig);
     }
 
-    /**
-     * Tests the registerDrone method.
-     */
     @Test
     void testRegisterDrone() {
         // Mock the save method of droneRepository with CircuitBreaker
@@ -127,9 +120,6 @@ class DroneServiceImplTest {
         assertEquals(drone.getState(), droneDTO.getState());
     }
 
-    /**
-     * Tests the loadDroneWithMedication method.
-     */
     @Test
     void testLoadDroneWithMedication() {
         // Mock the necessary repository methods with CircuitBreaker
@@ -160,9 +150,6 @@ class DroneServiceImplTest {
         assertEquals(drone.getId(), result.getDrone().getId());
     }
 
-    /**
-     * Tests that loadDroneWithMedication throws DroneNotAvailableException when no drone is available.
-     */
     @Test
     void testLoadDroneWithMedicationThrowsDroneNotAvailableException() {
         // Mock the repository method to return an empty list with CircuitBreaker
@@ -176,9 +163,6 @@ class DroneServiceImplTest {
                         droneService.loadDroneWithMedication(drone.getId(), new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl()))).call());
     }
 
-    /**
-     * Tests that loadDroneWithMedication throws OverweightException when the medication exceeds the drone's weight limit.
-     */
     @Test
     void testLoadDroneWithMedicationThrowsOverweightException() {
         // Set the drone's weight limit to a value less than the medication weight
@@ -196,9 +180,6 @@ class DroneServiceImplTest {
                         droneService.loadDroneWithMedication(drone.getId(), new MedicationDTO(medication.getId(), medication.getName(), medication.getWeight(), medication.getCode(), medication.getImageUrl()))).call());
     }
 
-    /**
-     * Tests the getMedicationsByDrone method.
-     */
     @Test
     void testGetMedicationsByDrone() throws Exception {
         // Mock the repository method to return the drone medication with CircuitBreaker
@@ -216,9 +197,6 @@ class DroneServiceImplTest {
         assertEquals(medication.getId(), result.get(0).getId());
     }
 
-    /**
-     * Tests the getAvailableDrones method.
-     */
     @Test
     void testGetAvailableDrones() throws Exception {
         // Mock the repository method to return the drone with CircuitBreaker
@@ -236,9 +214,6 @@ class DroneServiceImplTest {
         assertEquals(drone.getId(), result.get(0).getId());
     }
 
-    /**
-     * Tests the checkBatteryLevel method.
-     */
     @Test
     void testCheckBatteryLevel() throws Exception {
         // Mock the repository method to return the drone with CircuitBreaker
@@ -258,9 +233,6 @@ class DroneServiceImplTest {
         assertEquals(drone.getBatteryCapacity(), batteryLevel);
     }
 
-    /**
-     * Tests the updateDroneState method.
-     */
     @Test
     void testUpdateDroneState() throws Exception {
         // Mock the repository method to return the drone with CircuitBreaker
